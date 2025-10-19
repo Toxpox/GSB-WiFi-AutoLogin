@@ -55,8 +55,9 @@ python .\gsb_autologin.py
 
 ```
 v0.9.0/
-├── gsb_auto.py
+├── gsb_autologin.py
 ├── README.md
+├── LICENSE
 └── requirements.txt
 ```
 
