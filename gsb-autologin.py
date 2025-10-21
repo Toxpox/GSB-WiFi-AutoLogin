@@ -1,6 +1,8 @@
 from __future__ import annotations
+import json
 import socket
 import threading
+from pathlib import Path
 from urllib.parse import urlparse
 import requests
 import urllib3
@@ -12,6 +14,7 @@ from tkinter.scrolledtext import ScrolledText
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 DEFAULT_LOGIN_URL = "https://wifi.gsb.gov.tr/j_spring_security_check"
+USER_CONFIG_PATH = Path(__file__).with_name("user_config.json")
 
 def resolve_login_ip(login_url: str) -> str:
     parsed = urlparse(login_url)
@@ -68,10 +71,32 @@ def extract_portal_info(html: str) -> str:
     return "\n".join(entries) if entries else "Bilgi bloğu boş."
 
 
+def load_saved_username() -> str:
+    if not USER_CONFIG_PATH.exists():
+        return ""
+    try:
+        content = USER_CONFIG_PATH.read_text(encoding="utf-8")
+        data = json.loads(content)
+    except (OSError, json.JSONDecodeError):
+        return ""
+    username = data.get("username", "")
+    return username if isinstance(username, str) else ""
+
+
+def save_username(username: str) -> None:
+    if not username:
+        return
+    payload = json.dumps({"username": username})
+    try:
+        USER_CONFIG_PATH.write_text(payload, encoding="utf-8")
+    except OSError:
+        pass
+
+
 class AutoLoginApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
-        self.root.title("GSB WiFi AutoLogin v0.9.0")
+        self.root.title("GSB WiFi AutoLogin v0.9.1")
         self.root.geometry("450x340")
         self.root.resizable(False, False)
 
@@ -80,6 +105,7 @@ class AutoLoginApp:
         self.password_var = tk.StringVar()
 
         self._build_ui()
+        self._load_username()
         messagebox.showwarning("Uyarı", "Bu uygulama eğitim amacıyla yapılmıştır.")
         messagebox.showinfo("Bilgilendirme", "Uygulama başlatıldı. GSB WiFi ağına bağlandıktan sonra giriş yapabilirsiniz.")
 
@@ -111,6 +137,11 @@ class AutoLoginApp:
         self.log_text.see("end")
         self.log_text.configure(state="disabled")
 
+    def _load_username(self) -> None:
+        saved = load_saved_username()
+        if saved:
+            self.username_var.set(saved)
+
     def _start_login(self) -> None:
         login_url = self.url_var.get().strip()
         username = self.username_var.get().strip()
@@ -120,6 +151,7 @@ class AutoLoginApp:
             messagebox.showwarning("Eksik Bilgi", "Lütfen URL, kullanıcı adı ve şifre alanlarını doldurun.")
             return
 
+        save_username(username)
         self.login_button.state(["disabled"])
         self.log("--- Yeni giriş denemesi başlıyor ---")
         thread = threading.Thread(target=self._login_worker, args=(login_url, username, password), daemon=True)
