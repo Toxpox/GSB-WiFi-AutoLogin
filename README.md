@@ -1,6 +1,6 @@
 # GSB WiFi Auto Login
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-0.9.0-blue.svg?cacheSeconds=2592000" />
+  <img alt="Version" src="https://img.shields.io/badge/version-0.9.1-blue.svg?cacheSeconds=2592000" />
   <a href="https://github.com/Toxpox/GSB-WiFi-AutoLogin/blob/main/LICENSE" target="_blank">
     <img alt="License: MIT License" src="https://img.shields.io/badge/License-MIT License-purple.svg" />
   </a>
@@ -19,6 +19,7 @@ Eğitim amacıyla yapılmıştır.
 ## Özellikler
 
 - Kullanıcı adı ve şifre girişi için sade grafik arayüzü
+- Kullanıcı adı sonraki girişler için kaydedilir
 - IP bilgisi log ekranında görüntülenir
 - Başarılı giriş sonrası kullanıcı bilgilerini görüntüler
 - Tüm ağ işlemleri arka planda yürütülür
