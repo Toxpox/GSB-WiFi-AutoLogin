@@ -55,7 +55,7 @@ python .\gsb_autologin.py
 ## Proje yapısı
 
 ```
-v0.9.0/
+GSB-WiFi-AutoLogin/
 ├── gsb_autologin.py
 ├── README.md
 ├── LICENSE
