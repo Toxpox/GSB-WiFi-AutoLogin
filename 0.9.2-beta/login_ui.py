@@ -10,7 +10,7 @@ class Ui_LoginPage(object):
         self.centralwidget.setObjectName("centralwidget")
         self.frame = QtWidgets.QFrame(parent=self.centralwidget)
         self.frame.setGeometry(QtCore.QRect(0, 0, 341, 231))
-        self.frame.setStyleSheet("/* Ana Arka Plan */\n"
+        self.frame.setStyleSheet("\n"
 "#centralwidget {\n"
 "    background-color: #2c3e50;\n"
 "}\n"
@@ -21,14 +21,12 @@ class Ui_LoginPage(object):
 "    border: 1px solid #dcdcdc;\n"
 "}\n"
 "\n"
-"/* Yazı Kutuları (Username & Password) */\n"
 "QLineEdit {\n"
 "    border: 1px solid #bdc3c7;\n"
 "    border-radius: 5px;\n"
 "    padding: 5px;\n"
 "    background-color: #ecf0f1;\n"
 "}\n"
-"/* Yazı Kutuları (Username & Password) */\n"
 "QLineEdit {\n"
 "    border: 1px solid #bdc3c7;\n"
 "    border-radius: 5px;\n"
@@ -42,7 +40,6 @@ class Ui_LoginPage(object):
 "    border: 2px solid #3498db;\n"
 "}\n"
 "\n"
-"/* Giriş Yap Butonu */\n"
 "QPushButton {\n"
 "    background-color: #2980b9;\n"
 "    color: white;\n"
@@ -88,14 +85,14 @@ class Ui_LoginPage(object):
         font.setPointSize(11)
         self.BeniHatirla.setFont(font)
         self.BeniHatirla.setAutoFillBackground(False)
-        self.BeniHatirla.setStyleSheet("/* Checkbox Genel Ayarları */\n"
-"QCheckBox {\n"
+        self.BeniHatirla.setStyleSheet("QCheckBox {\n"
 "    spacing: 8px;\n"
 "    color: #555555;\n"
 "    font-weight: 500;\n"
 "    background-color: transparent;\n"
 "}\n"
 "\n"
+"/* Kutucuğun (Kare) Tasarımı */\n"
 "QCheckBox::indicator {\n"
 "    width: 16px;\n"
 "    height: 16px;\n"
@@ -104,7 +101,6 @@ class Ui_LoginPage(object):
 "    background-color: white;\n"
 "}\n"
 "\n"
-"/* Fare üzerine gelince kutu rengi */\n"
 "QCheckBox::indicator:hover {\n"
 "    border: 1px solid #3498db;\n"
 "}\n"
@@ -124,6 +120,32 @@ class Ui_LoginPage(object):
         self.GirisButton = QtWidgets.QPushButton(parent=self.frame)
         self.GirisButton.setGeometry(QtCore.QRect(130, 180, 81, 31))
         self.GirisButton.setObjectName("GirisButton")
+        self.kapatBtn = QtWidgets.QPushButton(parent=self.frame)
+        self.kapatBtn.setGeometry(QtCore.QRect(299, 10, 31, 20))
+        self.kapatBtn.setStyleSheet("QPushButton {\n"
+"    background-color: transparent;\n"
+"    color: #7f8c8d;\n"
+"    font-weight: bold;\n"
+"    border: none;\n"
+"    font-size: 14px;\n"
+"}\n"
+"QPushButton:hover {\n"
+"    color: #c0392b;\n"
+"}")
+        self.kapatBtn.setObjectName("kapatBtn")
+        self.altBtn = QtWidgets.QPushButton(parent=self.frame)
+        self.altBtn.setGeometry(QtCore.QRect(270, 10, 31, 20))
+        self.altBtn.setStyleSheet("QPushButton {\n"
+"    background-color: transparent;\n"
+"    color: #7f8c8d;\n"
+"    font-weight: bold;\n"
+"    border: none;\n"
+"    font-size: 14px;\n"
+"}\n"
+"QPushButton:hover {\n"
+"    color: #c0392b;\n"
+"}")
+        self.altBtn.setObjectName("altBtn")
         LoginPage.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(parent=LoginPage)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 17))
@@ -147,6 +169,8 @@ class Ui_LoginPage(object):
         self.label_3.setText(_translate("LoginPage", "Şifre:"))
         self.BeniHatirla.setText(_translate("LoginPage", "Beni Hatırla"))
         self.GirisButton.setText(_translate("LoginPage", "Giriş Yap"))
+        self.kapatBtn.setText(_translate("LoginPage", "X"))
+        self.altBtn.setText(_translate("LoginPage", "_"))
 
 
 if __name__ == "__main__":
