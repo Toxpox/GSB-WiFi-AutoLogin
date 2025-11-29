@@ -76,7 +76,6 @@ class LoginWorker(QThread):
             self.finished.emit()
 
 class LogoutWorker(QThread):
-    """Çıkış işlemini arka planda yapan worker"""
     finished = pyqtSignal()
 
     def run(self):
@@ -101,7 +100,6 @@ class MainApp(QMainWindow):
         self.stack.setCurrentWidget(self.login_widget)
 
     def setup_login_page(self):
-        """Login Ekranı Kurulumu"""
         self.login_widget = QMainWindow() 
         self.ui_login = Ui_LoginPage()
         self.ui_login.setupUi(self.login_widget)
@@ -120,7 +118,6 @@ class MainApp(QMainWindow):
         self.stack.addWidget(self.login_widget)
 
     def setup_dashboard_page(self):
-        """Dashboard Ekranı Kurulumu"""
         self.dash_widget = QWidget()
         self.ui_dash = Ui_Dashboard()
         self.ui_dash.setupUi(self.dash_widget)
@@ -178,7 +175,6 @@ class MainApp(QMainWindow):
             self.ui_login.statusbar.showMessage("Giriş başarısız.")
 
     def logout(self):
-        """Çıkış işlemini başlatır"""
         if hasattr(self.ui_dash, 'cikisButton'):
             self.ui_dash.cikisButton.setEnabled(False)
             self.ui_dash.cikisButton.setText("Çıkış Yapılıyor...")
@@ -188,7 +184,6 @@ class MainApp(QMainWindow):
         self.logout_worker.start()
 
     def on_logout_finished(self):
-        """Çıkış işlemi bittiğinde arayüzü resetler"""
         self.stack.setCurrentWidget(self.login_widget)
         self.ui_login.Sifre.clear()
         
