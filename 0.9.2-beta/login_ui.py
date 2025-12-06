@@ -4,7 +4,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 class Ui_LoginPage(object):
     def setupUi(self, LoginPage):
         LoginPage.setObjectName("LoginPage")
-        LoginPage.resize(800, 600)
+        LoginPage.resize(379, 293)
         LoginPage.setStyleSheet("")
         self.centralwidget = QtWidgets.QWidget(parent=LoginPage)
         self.centralwidget.setObjectName("centralwidget")

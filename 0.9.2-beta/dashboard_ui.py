@@ -38,16 +38,6 @@ class Ui_Form(object):
 "    color: #c0392b;\n"
 "}")
         self.altBtn.setObjectName("altBtn")
-        self.welcomeLabel = QtWidgets.QLabel(parent=Form)
-        self.welcomeLabel.setGeometry(QtCore.QRect(40, 50, 81, 31))
-        font = QtGui.QFont()
-        font.setPointSize(11)
-        font.setBold(True)
-        self.welcomeLabel.setFont(font)
-        self.welcomeLabel.setObjectName("welcomeLabel")
-        self.cikisButton = QtWidgets.QPushButton(parent=Form)
-        self.cikisButton.setGeometry(QtCore.QRect(300, 260, 81, 31))
-        self.cikisButton.setObjectName("cikisButton")
         self.frame = QtWidgets.QFrame(parent=Form)
         self.frame.setGeometry(QtCore.QRect(-1, -1, 401, 301))
         self.frame.setStyleSheet("QFrame {\n"
@@ -66,7 +56,7 @@ class Ui_Form(object):
         self.adSoyadLabel.setFont(font)
         self.adSoyadLabel.setObjectName("adSoyadLabel")
         self.kotaBilgisiLabel = QtWidgets.QLabel(parent=self.frame)
-        self.kotaBilgisiLabel.setGeometry(QtCore.QRect(160, 90, 211, 41))
+        self.kotaBilgisiLabel.setGeometry(QtCore.QRect(160, 100, 201, 31))
         font = QtGui.QFont()
         font.setPointSize(11)
         font.setBold(True)
@@ -80,24 +70,70 @@ class Ui_Form(object):
         self.sonGirisBilgiLabel.setFont(font)
         self.sonGirisBilgiLabel.setObjectName("sonGirisBilgiLabel")
         self.sonGirisLabel = QtWidgets.QLabel(parent=self.frame)
-        self.sonGirisLabel.setGeometry(QtCore.QRect(40, 150, 81, 31))
+        self.sonGirisLabel.setGeometry(QtCore.QRect(60, 150, 71, 31))
         font = QtGui.QFont()
         font.setPointSize(11)
         font.setBold(True)
         self.sonGirisLabel.setFont(font)
         self.sonGirisLabel.setObjectName("sonGirisLabel")
         self.cotaLabel = QtWidgets.QLabel(parent=self.frame)
-        self.cotaLabel.setGeometry(QtCore.QRect(40, 100, 111, 31))
+        self.cotaLabel.setGeometry(QtCore.QRect(50, 100, 91, 31))
         font = QtGui.QFont()
         font.setPointSize(11)
         font.setBold(True)
         self.cotaLabel.setFont(font)
         self.cotaLabel.setObjectName("cotaLabel")
+        self.baslikLabel = QtWidgets.QLabel(parent=self.frame)
+        self.baslikLabel.setGeometry(QtCore.QRect(10, 10, 171, 31))
+        font = QtGui.QFont()
+        font.setPointSize(-1)
+        font.setBold(True)
+        self.baslikLabel.setFont(font)
+        self.baslikLabel.setObjectName("baslikLabel")
+        self.cikisButton = QtWidgets.QPushButton(parent=self.frame)
+        self.cikisButton.setGeometry(QtCore.QRect(310, 240, 81, 31))
+        self.cikisButton.setObjectName("cikisButton")
+        self.yenileBtn = QtWidgets.QPushButton(parent=self.frame)
+        self.yenileBtn.setGeometry(QtCore.QRect(10, 100, 31, 31))
+        font = QtGui.QFont()
+        font.setPointSize(9)
+        font.setBold(True)
+        self.yenileBtn.setFont(font)
+        self.yenileBtn.setAutoFillBackground(False)
+        self.yenileBtn.setStyleSheet("QPushButton#yenileBtn {\n"
+"    background-color: transparent;\n"
+"    color: #f39c12;\n"
+"    border: 2px solid #f39c12;\n"
+"    border-radius: 15px;\n"
+"    font-weight: bold;\n"
+"}\n"
+"\n"
+"QPushButton#yenileBtn:hover {\n"
+"    background-color: #f39c12;\n"
+"    color: white;\n"
+"}\n"
+"\n"
+"QPushButton#yenileBtn:pressed {\n"
+"    background-color: #d35400;\n"
+"    border: 2px solid #d35400;\n"
+"}\n"
+"\n"
+"QPushButton#yenileBtn:disabled {\n"
+"    border: 2px solid #7f8c8d;\n"
+"    color: #7f8c8d;\n"
+"    background-color: transparent;\n"
+"}")
+        self.yenileBtn.setObjectName("yenileBtn")
+        self.welcomeLabel = QtWidgets.QLabel(parent=self.frame)
+        self.welcomeLabel.setGeometry(QtCore.QRect(50, 50, 101, 31))
+        font = QtGui.QFont()
+        font.setPointSize(11)
+        font.setBold(True)
+        self.welcomeLabel.setFont(font)
+        self.welcomeLabel.setObjectName("welcomeLabel")
         self.frame.raise_()
         self.kapatBtn.raise_()
         self.altBtn.raise_()
-        self.welcomeLabel.raise_()
-        self.cikisButton.raise_()
 
         self.retranslateUi(Form)
         QtCore.QMetaObject.connectSlotsByName(Form)
@@ -107,13 +143,15 @@ class Ui_Form(object):
         Form.setWindowTitle(_translate("Form", "Form"))
         self.kapatBtn.setText(_translate("Form", "X"))
         self.altBtn.setText(_translate("Form", "_"))
-        self.welcomeLabel.setText(_translate("Form", "Hoşgeldin"))
+        self.adSoyadLabel.setText(_translate("Form", "<html><head/><body><p align=\"center\">....</p></body></html>"))
+        self.kotaBilgisiLabel.setText(_translate("Form", "<html><head/><body><p align=\"center\">....</p></body></html>"))
+        self.sonGirisBilgiLabel.setText(_translate("Form", "<html><head/><body><p align=\"center\">.....</p></body></html>"))
+        self.sonGirisLabel.setText(_translate("Form", "<html><head/><body><p align=\"center\">Son Giriş</p></body></html>"))
+        self.cotaLabel.setText(_translate("Form", "<html><head/><body><p align=\"center\">Kalan Kota</p></body></html>"))
+        self.baslikLabel.setText(_translate("Form", "<html><head/><body><p align=\"center\"><span style=\" font-size:16pt;\">GSB AutoLogin</span></p></body></html>"))
         self.cikisButton.setText(_translate("Form", "Çıkış yap"))
-        self.adSoyadLabel.setText(_translate("Form", "...."))
-        self.kotaBilgisiLabel.setText(_translate("Form", "...."))
-        self.sonGirisBilgiLabel.setText(_translate("Form", "....."))
-        self.sonGirisLabel.setText(_translate("Form", "Son Giriş"))
-        self.cotaLabel.setText(_translate("Form", "Kalan Kota"))
+        self.yenileBtn.setText(_translate("Form", "↻"))
+        self.welcomeLabel.setText(_translate("Form", "<html><head/><body><p align=\"center\">Hoşgeldin</p></body></html>"))
 
 
 if __name__ == "__main__":

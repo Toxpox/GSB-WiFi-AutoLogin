@@ -1,11 +1,10 @@
 import sys
 import json
-import socket
 import requests
 import urllib3
 import datetime
+import re
 from pathlib import Path
-from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox, QWidget, QStackedWidget
@@ -15,30 +14,46 @@ from login_ui import Ui_LoginPage
 from dashboard_ui import Ui_Form as Ui_Dashboard 
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-DEFAULT_LOGIN_URL = "https://wifi.gsb.gov.tr/j_spring_security_check"
+
+LOGIN_URL = "https://wifi.gsb.gov.tr/j_spring_security_check"
 LOGOUT_URL = "https://wifi.gsb.gov.tr/cikisSon.html?logout=1"
 USER_CONFIG_PATH = Path(__file__).with_name("user_config.json")
 
-TEST_MODE = False
-
-def perform_login(login_url, username, password):
-    session = requests.Session()
-    payload = {"j_username": username, "j_password": password, "submit": "Giriş"}
-    try:
-        response = session.post(login_url, data=payload, verify=False, timeout=10)
-        response.raise_for_status()
-        return response.text
-    except Exception as e:
-        raise e
-
 def extract_portal_info(html):
-    if "çıkış" in html.lower() or "logout" in html.lower():
-        soup = BeautifulSoup(html, "html.parser")
-        center = soup.select_one("#content-div > center")
-        if center:
-            return center.get_text(separator=" ", strip=True)
-        return "Giriş Başarılı (Kota bilgisi okunamadı)"
-    return "Bilgi alınamadı."
+    """HTML'den İsim, Son Giriş ve Kotayı cımbızla çeker."""
+    soup = BeautifulSoup(html, "html.parser")
+    
+    data = {
+        "isim": "Öğrenci",
+        "kota": "Bilinmiyor",
+        "zaman": datetime.datetime.now().strftime("%d.%m.%Y %H:%M")
+    }
+
+    try:
+        name_span = soup.select_one("span.myinfo")
+        if name_span:
+            raw_name = name_span.get_text(strip=True)
+            data["isim"] = raw_name.title()
+    except: pass
+
+    try:
+        login_label = soup.find("label", class_="myinfo", string=re.compile("Son Giriş", re.IGNORECASE))
+        if login_label:
+            full_text = login_label.get_text(strip=True)
+            if ":" in full_text:
+                data["zaman"] = full_text.split(":", 1)[1].strip()
+    except: pass
+
+    try:
+        quota_label = soup.find("label", id=re.compile(r"mainPanel:kota:j_idt101:0:j_idt123"))
+        if quota_label:
+            raw_quota = quota_label.get_text(strip=True)
+            if "." in raw_quota:
+                raw_quota = raw_quota.split(".")[0]
+            data["kota"] = f"{raw_quota} MB"
+    except: pass
+
+    return data
 
 def load_user():
     if USER_CONFIG_PATH.exists():
@@ -53,23 +68,41 @@ def save_user(username):
 
 class LoginWorker(QThread):
     finished = pyqtSignal()
-    success = pyqtSignal(str)
+    success = pyqtSignal(dict)
     error = pyqtSignal(str)
 
-    def __init__(self, user, pwd):
+    def __init__(self, session, user, pwd):
         super().__init__()
+        self.session = session
         self.user = user
         self.pwd = pwd
-    
+
     def run(self):
         try:
-            result_html = perform_login(DEFAULT_LOGIN_URL, self.user, self.pwd)
-            info = extract_portal_info(result_html)
-            
-            if "Bilgi alınamadı" not in info:
-                self.success.emit(info)
-            else:
-                self.error.emit("Giriş yapıldı fakat portal bilgisi alınamadı veya hatalı giriş.")
+            payload = {"j_username": self.user, "j_password": self.pwd, "submit": "Giriş"}
+            response = self.session.post(LOGIN_URL, data=payload, verify=False, timeout=15)
+            response.raise_for_status()
+            data_dict = extract_portal_info(response.text)
+            self.success.emit(data_dict)
+        except Exception as e:
+            self.error.emit(str(e))
+        finally:
+            self.finished.emit()
+
+class RefreshWorker(QThread):
+    finished = pyqtSignal()
+    success = pyqtSignal(dict)
+    error = pyqtSignal(str)
+
+    def __init__(self, session):
+        super().__init__()
+        self.session = session
+
+    def run(self):
+        try:
+            response = self.session.get("https://wifi.gsb.gov.tr/", verify=False, timeout=10)
+            data_dict = extract_portal_info(response.text)
+            self.success.emit(data_dict)
         except Exception as e:
             self.error.emit(str(e))
         finally:
@@ -77,12 +110,14 @@ class LoginWorker(QThread):
 
 class LogoutWorker(QThread):
     finished = pyqtSignal()
+    def __init__(self, session):
+        super().__init__()
+        self.session = session
 
     def run(self):
         try:
-            requests.get(LOGOUT_URL, verify=False, timeout=5)
-        except Exception:
-            pass
+            self.session.get(LOGOUT_URL, verify=False, timeout=5)
+        except: pass
         self.finished.emit()
 
 
@@ -90,13 +125,18 @@ class MainApp(QMainWindow):
     def __init__(self):
         super().__init__()
         
+        self.session = requests.Session()
+
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.resize(450, 350)
+        
         self.stack = QStackedWidget()
         self.setCentralWidget(self.stack)
+        
         self.setup_login_page()
         self.setup_dashboard_page()
+        
         self.stack.setCurrentWidget(self.login_widget)
 
     def setup_login_page(self):
@@ -122,64 +162,93 @@ class MainApp(QMainWindow):
         self.ui_dash = Ui_Dashboard()
         self.ui_dash.setupUi(self.dash_widget)
 
-        if hasattr(self.ui_dash, 'cikisButton'):
-            self.ui_dash.cikisButton.clicked.connect(self.logout)
+        if hasattr(self.ui_dash, 'pushButton'): self.ui_dash.pushButton.clicked.connect(self.logout)
+        elif hasattr(self.ui_dash, 'cikisButton'): self.ui_dash.cikisButton.clicked.connect(self.logout)
+        
+        if hasattr(self.ui_dash, 'yenileBtn'):
+            self.ui_dash.yenileBtn.clicked.connect(self.start_refresh)
+            
+            yenile_style = """
+            QPushButton {
+                background-color: #16a085;
+                color: white;
+                border-radius: 8px;
+                border: none;
+                font-weight: bold;
+                font-size: 13px;
+                padding: 6px 12px;
+            }
+            QPushButton:hover {
+                background-color: #1abc9c;
+                border: 1px solid #a3e4d7;
+            }
+            QPushButton:pressed {
+                background-color: #0e6655;
+                padding-top: 8px;
+                padding-left: 8px;
+            }
+            QPushButton:disabled {
+                background-color: #7f8c8d;
+                color: #bdc3c7;
+            }
+            """
+            self.ui_dash.yenileBtn.setStyleSheet(yenile_style)
         
         if hasattr(self.ui_dash, 'kapatBtn'): self.ui_dash.kapatBtn.clicked.connect(self.close)
         if hasattr(self.ui_dash, 'altBtn'): self.ui_dash.altBtn.clicked.connect(self.showMinimized)
 
         self.stack.addWidget(self.dash_widget)
 
+
     def start_login(self):
         user = self.ui_login.KullaniciAdi.text().strip()
         pwd = self.ui_login.Sifre.text()
 
         if not user or not pwd: 
-            QMessageBox.warning(self, "Uyarı", "Kullanıcı adı ve şifre boş olamaz.")
+            QMessageBox.warning(self, "Uyarı", "Bilgileri giriniz.")
             return
 
         if self.ui_login.BeniHatirla.isChecked(): save_user(user)
 
         self.ui_login.GirisButton.setEnabled(False)
         self.ui_login.GirisButton.setText("Bağlanıyor...")
-        if hasattr(self.ui_login, 'statusbar'):
-            self.ui_login.statusbar.showMessage("Sunucuya istek gönderiliyor...")
 
-        self.worker = LoginWorker(user, pwd)
-        self.worker.success.connect(self.on_login_success)
+        self.worker = LoginWorker(self.session, user, pwd)
+        self.worker.success.connect(self.on_success_update)
         self.worker.error.connect(self.on_login_error)
         self.worker.finished.connect(lambda: self.ui_login.GirisButton.setEnabled(True))
         self.worker.finished.connect(lambda: self.ui_login.GirisButton.setText("Giriş Yap"))
         self.worker.start()
 
-    def on_login_success(self, info_text):
-        user = self.ui_login.KullaniciAdi.text()
-        if hasattr(self.ui_dash, 'adSoyadLabel'):
-            self.ui_dash.adSoyadLabel.setText(user)
+    def start_refresh(self):
+        if hasattr(self.ui_dash, 'yenileBtn'):
+            self.ui_dash.yenileBtn.setEnabled(False)
+            self.ui_dash.yenileBtn.setText("...")
         
-        if len(info_text) > 50: info_text = info_text[:50] + "..."
-        if hasattr(self.ui_dash, 'kotaBilgisiLabel'):
-            self.ui_dash.kotaBilgisiLabel.setText(info_text)
-        
-        now = datetime.datetime.now().strftime("%d.%m.%Y %H:%M")
-        if hasattr(self.ui_dash, 'sonGirisBilgiLabel'):
-            self.ui_dash.sonGirisBilgiLabel.setText(now)
+
+    def on_refresh_finished(self):
+        if hasattr(self.ui_dash, 'yenileBtn'):
+            self.ui_dash.yenileBtn.setEnabled(True)
+            self.ui_dash.yenileBtn.setText("Yenile")
+
+    def on_success_update(self, data):
+        self.ui_dash.adSoyadLabel.setText(data.get("isim", "Öğrenci"))
+        self.ui_dash.kotaBilgisiLabel.setText(data.get("kota", "Bilinmiyor"))
+        self.ui_dash.sonGirisBilgiLabel.setText(data.get("zaman", ""))
 
         self.stack.setCurrentWidget(self.dash_widget)
-        if hasattr(self.ui_login, 'statusbar'):
-            self.ui_login.statusbar.showMessage("Online")
+        if hasattr(self.ui_login, 'statusbar'): self.ui_login.statusbar.showMessage("Online")
 
     def on_login_error(self, err_msg):
-        QMessageBox.warning(self, "Giriş Başarısız", f"Hata Detayı:\n{err_msg}")
-        if hasattr(self.ui_login, 'statusbar'):
-            self.ui_login.statusbar.showMessage("Giriş başarısız.")
+        QMessageBox.warning(self, "Hata", f"İşlem Başarısız:\n{err_msg}")
 
     def logout(self):
-        if hasattr(self.ui_dash, 'cikisButton'):
-            self.ui_dash.cikisButton.setEnabled(False)
-            self.ui_dash.cikisButton.setText("Çıkış Yapılıyor...")
+        btn = getattr(self.ui_dash, 'pushButton', None) or getattr(self.ui_dash, 'cikisButton', None)
+        if btn:
+            btn.setEnabled(False)
+            btn.setText("Çıkış...")
             
-        self.logout_worker = LogoutWorker()
+        self.logout_worker = LogoutWorker(self.session)
         self.logout_worker.finished.connect(self.on_logout_finished)
         self.logout_worker.start()
 
@@ -187,17 +256,15 @@ class MainApp(QMainWindow):
         self.stack.setCurrentWidget(self.login_widget)
         self.ui_login.Sifre.clear()
         
-        if hasattr(self.ui_dash, 'cikisButton'):
-            self.ui_dash.cikisButton.setEnabled(True)
-            self.ui_dash.cikisButton.setText("Çıkış Yap") 
-
-        if hasattr(self.ui_login, 'statusbar'):
-            self.ui_login.statusbar.showMessage("Başarıyla çıkış yapıldı.")
+        self.session = requests.Session()
+        
+        btn = getattr(self.ui_dash, 'pushButton', None) or getattr(self.ui_dash, 'cikisButton', None)
+        if btn:
+            btn.setEnabled(True)
+            btn.setText("Çıkış Yap") 
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton: 
-            self.oldPos = event.globalPosition().toPoint()
-            
+        if event.button() == Qt.MouseButton.LeftButton: self.oldPos = event.globalPosition().toPoint()
     def mouseMoveEvent(self, event):
         if hasattr(self, 'oldPos'):
             delta = QPoint(event.globalPosition().toPoint() - self.oldPos)
