@@ -1,75 +1,70 @@
 # GSB WiFi Auto Login
+
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-0.9.1-blue.svg?cacheSeconds=2592000" />
+  <img alt="Version" src="https://img.shields.io/badge/version-0.9.2-blue.svg?cacheSeconds=2592000" />
   <a href="https://github.com/Toxpox/GSB-WiFi-AutoLogin/blob/main/LICENSE" target="_blank">
-    <img alt="License: MIT License" src="https://img.shields.io/badge/License-MIT License-purple.svg" />
+  <img alt="License: MIT License" src="https://img.shields.io/badge/License-MIT License-purple.svg" />
   </a>
+  <img alt="Platform" src="https://img.shields.io/badge/Platform-Windows-blue.svg" />
 </p>
 
-Bu uygulama, KYK yurtlarında kullanılan internete otomatik giriş yapılmasını sağlar. Login ekranının yüklenmesini beklemenize gerek kalmaz. Kod yerel olarak çalışmakta olup herhangi bir şekilde verilerinizi dışarıya aktarmaz.
+Bu uygulama, KYK yurtlarında kullanılan GSB WiFi ağına otomatik giriş yapılmasını sağlayan modern bir masaüstü uygulamasıdır. Yeni arayüzü ile kota bilgilerinizi, son giriş zamanınızı ve kullanıcı bilgilerinizi kolayca takip edebilirsiniz.
 
 ### 🏠 [Anasayfa](https://github.com/Toxpox/GSB-WiFi-AutoLogin)
 
 ## ⚠️ Güvenlik Uyarısı
 
-Bu uygulama, yalnızca GSB/KYK captive portalı için tasarlanmıştır. Kimlik bilgilerinizin güvenliğini sağlamak adına, uygulamayı kişisel cihazınızda çalıştırın ve dosyaları üçüncü kişilerle paylaşmayın.
+Bu uygulama, yalnızca GSB/KYK captive portalı için tasarlanmıştır. Kimlik bilgileriniz **sadece kendi bilgisayarınızda** `user_config.json` dosyasında saklanır ve dışarıya aktarılmaz. Uygulamayı güvenilir olmayan kaynaklardan indirmeyiniz.
 
-Eğitim amacıyla yapılmıştır.
+## 📸 Ekran Görüntüsü
 
-## Özellikler
+<div align="center">
+<img src="src/LoginPage.png" alt="LoginPage" width="400" />
+</div>
 
-- Kullanıcı adı ve şifre girişi için sade grafik arayüzü
-- Kullanıcı adı sonraki girişler için kaydedilir
-- IP bilgisi log ekranında görüntülenir
-- Başarılı giriş sonrası kullanıcı bilgilerini görüntüler
-- Tüm ağ işlemleri arka planda yürütülür
+## ✨ Özellikler
 
-## 🔧 Gereksinimler
+- **Modern Arayüz:** PyQt6 ile geliştirilmiş şık ve kullanıcı dostu tasarım.
+- **Otomatik Giriş:** Kullanıcı adınızı kaydederek giriş yapın.
+- **Dashboard Ekranı:**
+  - Kalan kota bilgisi
+  - Son giriş zamanı
+  - Kullanıcı adı görüntüleme
+- **Hızlı İşlem:** Arka planda çalışan optimize edilmiş giriş algoritması.
+- **Taşınabilir (Portable):** Kurulum gerektirmeyen `.exe` formatı.
 
-- Python 3.10 veya üzeri (Windows üzerinde test edildi)
-- Aşağıdaki Python paketleri:
-  - `requests`
-  - `beautifulsoup4`
-  - `urllib3`
+## 🚀 Kurulum ve Kullanım
 
-Kurulum için:
+
+1. [Releases](https://github.com/Toxpox/GSB-WiFi-AutoLogin/releases) sayfasından `GSB_AutoLogin.exe` dosyasını indirin.
+2. Bilgisayarınızın GSB WiFi ağına bağlı olduğundan emin olun.
+3. `GSB_AutoLogin.exe` dosyasını çalıştırın.
+4. Kullanıcı adı ve şifrenizi girerek **Giriş Yap** butonuna tıklayın.
+
+
+## 🛠️ Geliştirme ve Derleme
+
+Projeyi kendiniz derlemek isterseniz `PyInstaller` kullanabilirsiniz:
 
 ```powershell
-pip install -r requirements.txt
+pyinstaller --noconsole --onefile --name="GSB_AutoLogin" gsb_autologin.py
 ```
 
-## Kullanım
-
-```powershell
-python .\gsb_autologin.py
-```
-
-1. Programı başlatmadan önce GSB WiFi ağında olduğunuzdan emin olun.
-2. Açılan pencerede kullanıcı adınızı ve şifrenizi girin.
-3. **Giriş Yap** tuşuna basın.
-4. Log ekranında DNS çözümlemesi, kullanıcı bilgileri ve olası hataları takip edebilirsiniz.
-
-> ⚠️ Yazılım eğitim ve otomasyon denemeleri amacıyla sağlanmıştır.
-
-
-## Proje yapısı
+## 📂 Proje Yapısı
 
 ```
 GSB-WiFi-AutoLogin/
-├── gsb_autologin.py
-├── README.md
+  0.9.2-beta/
+    ├── gsb_autologin.py    # Ana uygulama mantığı ve pencere yönetimi
+    ├── login_ui.py         # Giriş ekranı arayüz kodları (PyQt6)
+    └── dashboard_ui.py     # Bilgi ekranı arayüz kodları (PyQt6)
+├── user_config.json        # Kullanıcı ayarlarının saklandığı dosya (Otomatik oluşur)
 ├── LICENSE
-└── requirements.txt
+├── README.md               # Proje dokümantasyonu
+└── gsb-autologin-core.py   # WinUI için API
 ```
-
-## Sorun Giderme
-
-- **DNS çözümlemesi başarısız**: Ağ bağlantınızı kontrol edin.
-- **HTTP hatası 302/401**: Kullanıcı adı veya şifrenizi doğrulayın.
 
 ## 📝 Lisans
 
-Copyright © 2025 [Toxpox](https://github.com/Toxpox).<br/>
-This project is [MIT License](https://github.com/Toxpox/GSB-WiFi-AutoLogin/blob/main/LICENSE) licensed.
-
-***
+Copyright © 2025 [Toxpox](https://github.com/Toxpox). 
+Bu proje [MIT License](https://github.com/Toxpox/GSB-WiFi-AutoLogin/blob/main/LICENSE) ile lisanslanmıştır.
