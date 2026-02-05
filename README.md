@@ -1,4 +1,6 @@
 # GSB WiFi Auto Login
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin?ref=badge_shield)
+
 
 <p>
   <img alt="Version" src="https://img.shields.io/badge/version-0.9.2-blue.svg?cacheSeconds=2592000" />
@@ -9,6 +11,9 @@
 </p>
 
 Bu uygulama, KYK yurtlarında kullanılan GSB WiFi ağına otomatik giriş yapılmasını sağlayan modern bir masaüstü uygulamasıdır. Yeni arayüzü ile kota bilgilerinizi, son giriş zamanınızı ve kullanıcı bilgilerinizi kolayca takip edebilirsiniz.
+
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin?ref=badge_large)
 
 ### 🏠 [Anasayfa](https://github.com/Toxpox/GSB-WiFi-AutoLogin)
 
