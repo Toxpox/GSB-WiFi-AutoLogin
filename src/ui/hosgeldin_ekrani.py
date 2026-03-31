@@ -24,25 +24,33 @@ class HosgeldinEkrani(ctk.CTkFrame):
         ust.pack(fill="x", pady=(10, 0))
 
         ikon_kutu = ctk.CTkFrame(
-            ust, width=70, height=70, corner_radius=35,
-            fg_color=renkler["yesil_koyu"], border_width=3, border_color=renkler["yesil"],
+            ust,
+            width=70,
+            height=70,
+            corner_radius=35,
+            fg_color=renkler["yesil_koyu"],
+            border_width=3,
+            border_color=renkler["yesil"],
         )
         ikon_kutu.pack()
         ikon_kutu.pack_propagate(False)
         ctk.CTkLabel(
-            ikon_kutu, text="✓",
+            ikon_kutu,
+            text="✓",
             font=ctk.CTkFont(size=36, weight="bold"),
             text_color=renkler["yesil"],
         ).place(relx=0.5, rely=0.5, anchor="center")
 
         ctk.CTkLabel(
-            ust, text="Hoş Geldiniz!",
+            ust,
+            text="Hoş Geldiniz!",
             font=ctk.CTkFont(family="Segoe UI", size=26, weight="bold"),
             text_color=renkler["beyaz"],
         ).pack(pady=(14, 4))
 
         self.isim_lbl = ctk.CTkLabel(
-            ust, text="",
+            ust,
+            text="",
             font=ctk.CTkFont(family="Segoe UI", size=16),
             text_color=renkler["mor_acik"],
         )
@@ -52,68 +60,93 @@ class HosgeldinEkrani(ctk.CTkFrame):
         durum_kutu = ctk.CTkFrame(ust, fg_color=renkler["yesil_koyu"], corner_radius=20, height=32)
         durum_kutu.pack(pady=(12, 0))
         ctk.CTkLabel(
-            durum_kutu, text="● Bağlantı Aktif",
+            durum_kutu,
+            text="● Bağlantı Aktif",
             font=ctk.CTkFont(family="Segoe UI Semibold", size=12),
             text_color=renkler["yesil"],
         ).pack(padx=16, pady=6)
 
         # Kullanici bilgi karti
         self.bilgi_kart = ctk.CTkFrame(
-            self.icerik, fg_color=renkler["kart"], corner_radius=16,
-            border_width=1, border_color=renkler["cizgi"],
+            self.icerik,
+            fg_color=renkler["kart"],
+            corner_radius=16,
+            border_width=1,
+            border_color=renkler["cizgi"],
         )
 
         self.bilgi_ic = ctk.CTkFrame(self.bilgi_kart, fg_color="transparent")
         self.bilgi_ic.pack(fill="x", padx=20, pady=14)
 
         ctk.CTkLabel(
-            self.bilgi_ic, text="👤 Kullanıcı Bilgileri",
+            self.bilgi_ic,
+            text="👤 Kullanıcı Bilgileri",
             font=ctk.CTkFont(family="Segoe UI Semibold", size=13),
-            text_color=renkler["gri"], anchor="w",
+            text_color=renkler["gri"],
+            anchor="w",
         ).pack(fill="x")
 
         self.son_giris_lbl = ctk.CTkLabel(
-            self.bilgi_ic, text="",
+            self.bilgi_ic,
+            text="",
             font=ctk.CTkFont(family="Segoe UI", size=13),
-            text_color=renkler["beyaz"], anchor="w", justify="left",
+            text_color=renkler["beyaz"],
+            anchor="w",
+            justify="left",
         )
 
         self.konum_lbl = ctk.CTkLabel(
-            self.bilgi_ic, text="",
+            self.bilgi_ic,
+            text="",
             font=ctk.CTkFont(family="Segoe UI", size=13),
-            text_color=renkler["beyaz"], anchor="w", justify="left",
+            text_color=renkler["beyaz"],
+            anchor="w",
+            justify="left",
         )
 
         # Kota karti
         self.kota_kart = ctk.CTkFrame(
-            self.icerik, fg_color=renkler["kart"], corner_radius=16,
-            border_width=1, border_color=renkler["cizgi"],
+            self.icerik,
+            fg_color=renkler["kart"],
+            corner_radius=16,
+            border_width=1,
+            border_color=renkler["cizgi"],
         )
 
         self.kota_ic = ctk.CTkFrame(self.kota_kart, fg_color="transparent")
         self.kota_ic.pack(fill="x", padx=20, pady=14)
 
         ctk.CTkLabel(
-            self.kota_ic, text="📊 Kota Bilgileri",
+            self.kota_ic,
+            text="📊 Kota Bilgileri",
             font=ctk.CTkFont(family="Segoe UI Semibold", size=13),
-            text_color=renkler["gri"], anchor="w",
+            text_color=renkler["gri"],
+            anchor="w",
         ).pack(fill="x")
 
         self.kota_bar = ctk.CTkProgressBar(
-            self.kota_ic, height=14, corner_radius=7,
-            fg_color=renkler["input_bg"], progress_color=renkler["mor"],
+            self.kota_ic,
+            height=14,
+            corner_radius=7,
+            fg_color=renkler["input_bg"],
+            progress_color=renkler["mor"],
         )
 
         self.kota_yuzde_lbl = ctk.CTkLabel(
-            self.kota_ic, text="",
+            self.kota_ic,
+            text="",
             font=ctk.CTkFont(family="Segoe UI Semibold", size=13),
-            text_color=renkler["beyaz"], anchor="w",
+            text_color=renkler["beyaz"],
+            anchor="w",
         )
 
         self.kota_detay_lbl = ctk.CTkLabel(
-            self.kota_ic, text="",
+            self.kota_ic,
+            text="",
             font=ctk.CTkFont(family="Segoe UI", size=12),
-            text_color=renkler["gri"], anchor="w", justify="left",
+            text_color=renkler["gri"],
+            anchor="w",
+            justify="left",
         )
 
         # Butonlar
@@ -121,9 +154,13 @@ class HosgeldinEkrani(ctk.CTkFrame):
         btn_alan.pack(fill="x", side="bottom", pady=(10, 0))
 
         ctk.CTkButton(
-            btn_alan, text="📋 Sistem Günlüğü",
-            font=ctk.CTkFont(size=12), height=36, corner_radius=10,
-            fg_color="transparent", hover_color=renkler["kart"],
+            btn_alan,
+            text="📋 Sistem Günlüğü",
+            font=ctk.CTkFont(size=12),
+            height=36,
+            corner_radius=10,
+            fg_color="transparent",
+            hover_color=renkler["kart"],
             text_color=renkler["gri_koyu"],
             command=self.uyg._log_goster,
         ).pack(fill="x", pady=(0, 8))
@@ -187,9 +224,7 @@ class HosgeldinEkrani(ctk.CTkFrame):
             # Kalan / Toplam
             kalan_gb = kalan / 1024
             toplam_gb = toplam / 1024
-            self.kota_yuzde_lbl.configure(
-                text=f"{kalan_gb:.1f} GB / {toplam_gb:.1f} GB  ({oran:.0%})"
-            )
+            self.kota_yuzde_lbl.configure(text=f"{kalan_gb:.1f} GB / {toplam_gb:.1f} GB  ({oran:.0%})")
             self.kota_yuzde_lbl.pack(fill="x", pady=(6, 0))
 
             # Detaylar

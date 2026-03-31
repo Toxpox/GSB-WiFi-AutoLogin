@@ -12,6 +12,7 @@ from pathlib import Path
 
 try:
     from cryptography.fernet import Fernet, InvalidToken
+
     _KRIPTO = True
 except ImportError:
     _KRIPTO = False
@@ -35,6 +36,7 @@ def _asset_yolu(dosya: str) -> Path:
     if p.exists():
         return p
     return src_dir.parent / dosya
+
 
 # Versiyon - Tek kaynak
 __version__ = "1.0.0"

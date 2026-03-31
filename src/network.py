@@ -78,6 +78,7 @@ def giris_yap(
             # Portal 200 donduruyor ama URL bu string'i iceriyorsa cihaz limiti dolmus
             if "maksimumCihazHakkiDolu" in r.url:
                 from parser import maksimum_bilgi_cek
+
                 cihaz_bilgisi = maksimum_bilgi_cek(r.text)
                 raise MaksimumCihaz(cihaz_bilgisi=cihaz_bilgisi, session=s, html=r.text)
 

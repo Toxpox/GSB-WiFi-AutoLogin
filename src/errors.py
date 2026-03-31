@@ -12,7 +12,6 @@ class GSBHata(Exception):
 
 
 class AgHatasi(GSBHata):
-
     def __init__(self, mesaj: str = "Ag hatasi"):
         super().__init__(mesaj, "GSB WiFi agina bagli oldugunuzdan emin olun.")
 
@@ -24,8 +23,7 @@ class DNSHatasi(AgHatasi):
         mesaj = f"DNS hatasi: {host}" if host else "DNS hatasi"
         super().__init__(mesaj)
         self.kullanici_mesaji = (
-            "Sunucuya ulaşılamıyor. "
-            "VPN aktifse devre dışı bırakın veya ağ yapılandırmanızı kontrol edin."
+            "Sunucuya ulaşılamıyor. VPN aktifse devre dışı bırakın veya ağ yapılandırmanızı kontrol edin."
         )
 
 

@@ -68,9 +68,7 @@ class DurumRozeti(ctk.CTkFrame):
         self.ic = ctk.CTkFrame(self.kutu, fg_color="transparent")
         self.ic.pack(padx=14, pady=5)
 
-        self.nokta = ctk.CTkLabel(
-            self.ic, text="●", font=ctk.CTkFont(size=8), text_color=renkler["gri_koyu"], width=12
-        )
+        self.nokta = ctk.CTkLabel(self.ic, text="●", font=ctk.CTkFont(size=8), text_color=renkler["gri_koyu"], width=12)
         self.nokta.pack(side="left")
 
         self.yazi = ctk.CTkLabel(

@@ -6,7 +6,7 @@ import customtkinter as ctk
 from PIL import Image
 
 from config import WIFI_IMG_YOLU, renkler
-from ui.widgets import AnaButon, GirisAlani, DurumRozeti
+from ui.widgets import AnaButon, DurumRozeti, GirisAlani
 
 
 class GirisEkrani(ctk.CTkFrame):
@@ -21,8 +21,13 @@ class GirisEkrani(ctk.CTkFrame):
         ust.pack(fill="x", pady=(0, 20))
 
         ikon_kutu = ctk.CTkFrame(
-            ust, width=64, height=64, corner_radius=18,
-            fg_color=renkler["kart"], border_width=1, border_color=renkler["cizgi"],
+            ust,
+            width=64,
+            height=64,
+            corner_radius=18,
+            fg_color=renkler["kart"],
+            border_width=1,
+            border_color=renkler["cizgi"],
         )
         ikon_kutu.pack()
         ikon_kutu.pack_propagate(False)
@@ -33,20 +38,25 @@ class GirisEkrani(ctk.CTkFrame):
             ctk.CTkLabel(ikon_kutu, text="📶", font=ctk.CTkFont(size=28)).place(relx=0.5, rely=0.5, anchor="center")
 
         ctk.CTkLabel(
-            ust, text="GSB WiFi",
+            ust,
+            text="GSB WiFi",
             font=ctk.CTkFont(family="Segoe UI", size=26, weight="bold"),
             text_color=renkler["beyaz"],
         ).pack(pady=(12, 0))
         ctk.CTkLabel(
-            ust, text="Otomatik Bağlantı Sistemi",
+            ust,
+            text="Otomatik Bağlantı Sistemi",
             font=ctk.CTkFont(family="Segoe UI", size=12),
             text_color=renkler["gri_koyu"],
         ).pack(pady=(2, 0))
 
         # Form karti
         kart = ctk.CTkFrame(
-            self, fg_color=renkler["kart"], corner_radius=18,
-            border_width=1, border_color=renkler["cizgi"],
+            self,
+            fg_color=renkler["kart"],
+            corner_radius=18,
+            border_width=1,
+            border_color=renkler["cizgi"],
         )
         kart.pack(fill="x", pady=(0, 16))
 
@@ -55,18 +65,22 @@ class GirisEkrani(ctk.CTkFrame):
 
         # Kullanici adi
         ctk.CTkLabel(
-            kart_ic, text="👤  Kullanıcı Adı",
+            kart_ic,
+            text="👤  Kullanıcı Adı",
             font=ctk.CTkFont(family="Segoe UI Semibold", size=12),
-            text_color=renkler["gri"], anchor="w",
+            text_color=renkler["gri"],
+            anchor="w",
         ).pack(fill="x")
         self.kullanici_gir = GirisAlani(kart_ic, ipucu="TC Kimlik No", textvariable=self.uyg.kullanici_var)
         self.kullanici_gir.pack(fill="x", pady=(6, 16))
 
         # Sifre
         ctk.CTkLabel(
-            kart_ic, text="🔐  Şifre",
+            kart_ic,
+            text="🔐  Şifre",
             font=ctk.CTkFont(family="Segoe UI Semibold", size=12),
-            text_color=renkler["gri"], anchor="w",
+            text_color=renkler["gri"],
+            anchor="w",
         ).pack(fill="x")
         self.sifre_gir = GirisAlani(kart_ic, ipucu="••••••••", gizli=True, textvariable=self.uyg.sifre_var)
         self.sifre_gir.pack(fill="x", pady=(6, 20))
@@ -93,18 +107,24 @@ class GirisEkrani(ctk.CTkFrame):
 
         # Log butonu
         log_btn = ctk.CTkButton(
-            self, text="📋 Sistem Günlüğü",
-            font=ctk.CTkFont(size=12), height=36, corner_radius=10,
-            fg_color=renkler["kart"], hover_color=renkler["kart2"],
+            self,
+            text="📋 Sistem Günlüğü",
+            font=ctk.CTkFont(size=12),
+            height=36,
+            corner_radius=10,
+            fg_color=renkler["kart"],
+            hover_color=renkler["kart2"],
             text_color=renkler["gri_koyu"],
-            border_width=1, border_color=renkler["cizgi"],
+            border_width=1,
+            border_color=renkler["cizgi"],
             command=self.uyg._log_goster,
         )
         log_btn.pack(fill="x")
 
         # Uyari
         ctk.CTkLabel(
-            self, text="⚠ Bu uygulama eğitim amaçlıdır.",
+            self,
+            text="⚠ Bu uygulama eğitim amaçlıdır.",
             font=ctk.CTkFont(family="Segoe UI", size=11),
             text_color=renkler["gri_koyu"],
         ).pack(pady=(16, 0))

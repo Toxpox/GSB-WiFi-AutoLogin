@@ -19,7 +19,7 @@ from config import (
     renkler,
     tc_maskele,
 )
-from errors import DNSHatasi, GSBHata, GirisBasarisiz, MaksimumCihaz
+from errors import DNSHatasi, GirisBasarisiz, GSBHata, MaksimumCihaz
 from network import cikis_yap, giris_yap, ip_bul, onceki_oturumu_kapat
 from parser import bilgi_cek
 from ui.giris_ekrani import GirisEkrani
@@ -51,7 +51,7 @@ class Uygulama:
         self.sifre_var = ctk.StringVar()
         self.kullanici_bilgi: dict = {}
         self.oturum: requests.Session | None = None
-        self._giris_aktif = False       # Cift tiklama korumasi
+        self._giris_aktif = False  # Cift tiklama korumasi
         self._maksimum_bekliyor = False  # Maksimum cihaz akisi aktif mi
 
         # Ana cerceve
@@ -77,11 +77,7 @@ class Uygulama:
 
     def _thread_hata_yakala(self, args):
         """Thread icerisinde yakalanmamis hatalari ele al"""
-        self._sonra(
-            lambda: self.log.yaz(
-                f"✗ Beklenmeyen hata: {args.exc_type.__name__}: {args.exc_value}", "hata"
-            )
-        )
+        self._sonra(lambda: self.log.yaz(f"✗ Beklenmeyen hata: {args.exc_type.__name__}: {args.exc_value}", "hata"))
 
     def _giris_goster(self):
         self.hosgeldin_ekrani.pack_forget()
@@ -156,11 +152,13 @@ class Uygulama:
                 ip = ip_bul(url)
                 self._sonra(lambda: self.log.yaz(f"🌐 Sunucu: {ip}", "soluk"))
             except DNSHatasi:
-                self._sonra(lambda: self.log.yaz(
-                    "⚠ DNS hatası: Sunucuya ulaşılamıyor. "
-                    "VPN aktifse devre dışı bırakın veya ağ yapılandırmanızı kontrol edin.",
-                    "uyari",
-                ))
+                self._sonra(
+                    lambda: self.log.yaz(
+                        "⚠ DNS hatası: Sunucuya ulaşılamıyor. "
+                        "VPN aktifse devre dışı bırakın veya ağ yapılandırmanızı kontrol edin.",
+                        "uyari",
+                    )
+                )
             except Exception as e:
                 hata_msg = str(e)
                 self._sonra(lambda: self.log.yaz(f"⚠ IP alınamadı: {hata_msg}", "uyari"))
@@ -171,13 +169,9 @@ class Uygulama:
                     self.oturum.close()
 
             def deneme_bildir(deneme, toplam):
+                self._sonra(lambda: self.log.yaz(f"  ↻ {deneme}. deneme... ({deneme}/{toplam})", "uyari"))
                 self._sonra(
-                    lambda: self.log.yaz(f"  ↻ {deneme}. deneme... ({deneme}/{toplam})", "uyari")
-                )
-                self._sonra(
-                    lambda: self.giris_ekrani.durum.guncelle(
-                        f"Yeniden deneniyor ({deneme}/{toplam})...", "yukleniyor"
-                    )
+                    lambda: self.giris_ekrani.durum.guncelle(f"Yeniden deneniyor ({deneme}/{toplam})...", "yukleniyor")
                 )
 
             oturum, html = giris_yap(url, k, s, deneme_callback=deneme_bildir)
@@ -198,9 +192,7 @@ class Uygulama:
                 try:
                     kalan_gb = float(kalan_str) / 1024
                     toplam_gb = float(toplam_str) / 1024
-                    self._sonra(
-                        lambda: self.log.yaz(f"  Kota: {kalan_gb:.1f} / {toplam_gb:.1f} GB", "soluk")
-                    )
+                    self._sonra(lambda: self.log.yaz(f"  Kota: {kalan_gb:.1f} / {toplam_gb:.1f} GB", "soluk"))
                 except ValueError:
                     pass
             self._sonra(lambda: self.giris_ekrani.durum.guncelle("Bağlı", "basarili"))
@@ -257,9 +249,7 @@ class Uygulama:
         finally:
             self._giris_aktif = False
             if not self._maksimum_bekliyor:
-                self._sonra(
-                    lambda: self.giris_ekrani.giris_btn.configure(state="normal", text="Bağlan")
-                )
+                self._sonra(lambda: self.giris_ekrani.giris_btn.configure(state="normal", text="Bağlan"))
 
     def _maksimum_onay_sor(self, mesaj, url, k, s, oturum, html):
         """Maksimum cihaz durumunda kullaniciya onay sor; evet ise onceki oturumu kaldir ve tekrar baglan."""
@@ -270,9 +260,7 @@ class Uygulama:
             self.giris_ekrani.giris_btn.configure(state="disabled", text="Bağlanıyor...")
             self.giris_ekrani.durum.guncelle("Önceki oturum kapatılıyor...", "yukleniyor")
             self.log.yaz("↻ Önceki cihazın bağlantısı kapatılıyor...", "uyari")
-            t = threading.Thread(
-                target=self._maksimum_isle, args=(url, k, s, oturum, html), daemon=True
-            )
+            t = threading.Thread(target=self._maksimum_isle, args=(url, k, s, oturum, html), daemon=True)
             t.start()
         else:
             self.giris_ekrani.giris_btn.configure(state="normal", text="Bağlan")
