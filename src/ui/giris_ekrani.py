@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from PIL import Image
 import customtkinter as ctk
+from PIL import Image
 
-from config import renkler, WIFI_IMG_YOLU
+from config import WIFI_IMG_YOLU, renkler
 from ui.widgets import AnaButon, GirisAlani, DurumRozeti
 
 

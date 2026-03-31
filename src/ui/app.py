@@ -2,28 +2,29 @@
 
 from __future__ import annotations
 
+import contextlib
 import threading
 import time
-
-import requests
-import customtkinter as ctk
 from tkinter import messagebox
+
+import customtkinter as ctk
+import requests
 
 from config import (
     GIRIS_URL,
+    WIFI_IMG_YOLU,
     __version__,
-    renkler,
     kayitli_kullanici_al,
     kullanici_kaydet,
+    renkler,
     tc_maskele,
-    WIFI_IMG_YOLU,
 )
-from network import ip_bul, giris_yap, cikis_yap, onceki_oturumu_kapat
+from errors import DNSHatasi, GSBHata, GirisBasarisiz, MaksimumCihaz
+from network import cikis_yap, giris_yap, ip_bul, onceki_oturumu_kapat
 from parser import bilgi_cek
-from errors import GSBHata, GirisBasarisiz, MaksimumCihaz, DNSHatasi
-from ui.log_penceresi import LogPenceresi
 from ui.giris_ekrani import GirisEkrani
 from ui.hosgeldin_ekrani import HosgeldinEkrani
+from ui.log_penceresi import LogPenceresi
 
 
 class Uygulama:
@@ -40,10 +41,8 @@ class Uygulama:
         self.ana.configure(fg_color=renkler["arkaplan"])
 
         # Pencere ikonu (taskbar + sol ust kose)
-        try:
+        with contextlib.suppress(Exception):
             self.ana.iconbitmap(str(WIFI_IMG_YOLU))
-        except Exception:
-            pass
 
         ctk.set_appearance_mode("dark")
 
@@ -163,14 +162,13 @@ class Uygulama:
                     "uyari",
                 ))
             except Exception as e:
-                self._sonra(lambda: self.log.yaz(f"⚠ IP alınamadı: {e}", "uyari"))
+                hata_msg = str(e)
+                self._sonra(lambda: self.log.yaz(f"⚠ IP alınamadı: {hata_msg}", "uyari"))
 
             # Eski oturumu kapat (session leak onlemi)
             if self.oturum:
-                try:
+                with contextlib.suppress(Exception):
                     self.oturum.close()
-                except Exception:
-                    pass
 
             def deneme_bildir(deneme, toplam):
                 self._sonra(
@@ -245,14 +243,16 @@ class Uygulama:
             self._sonra(lambda: messagebox.showerror("Hata", mesaj))
 
         except requests.HTTPError as e:
-            self._sonra(lambda: self.log.yaz(f"✗ HTTP Hatası: {e}", "hata"))
+            hata_msg = str(e)
+            self._sonra(lambda: self.log.yaz(f"✗ HTTP Hatası: {hata_msg}", "hata"))
             self._sonra(lambda: self.giris_ekrani.durum.guncelle("Hata", "hata"))
-            self._sonra(lambda: messagebox.showerror("Hata", f"HTTP: {e}"))
+            self._sonra(lambda: messagebox.showerror("Hata", f"HTTP: {hata_msg}"))
 
         except Exception as e:
-            self._sonra(lambda: self.log.yaz(f"✗ Hata: {e}", "hata"))
+            hata_msg = str(e)
+            self._sonra(lambda: self.log.yaz(f"✗ Hata: {hata_msg}", "hata"))
             self._sonra(lambda: self.giris_ekrani.durum.guncelle("Hata", "hata"))
-            self._sonra(lambda: messagebox.showerror("Hata", str(e)))
+            self._sonra(lambda: messagebox.showerror("Hata", hata_msg))
 
         finally:
             self._giris_aktif = False

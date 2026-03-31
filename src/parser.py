@@ -72,9 +72,8 @@ def bilgi_cek(html: str) -> dict:
             onceki_konum = bilgi["konum"]
             onceki_giris = bilgi["son_giris"]
             _alan_ayikla(bilgi, txt)
-            if bilgi["konum"] != onceki_konum or bilgi["son_giris"] != onceki_giris:
-                if txt not in bilgi["detaylar"]:
-                    bilgi["detaylar"].append(txt)
+            if (bilgi["konum"] != onceki_konum or bilgi["son_giris"] != onceki_giris) and txt not in bilgi["detaylar"]:
+                bilgi["detaylar"].append(txt)
 
     # Kota bilgileri
     bilgi["kota"] = _kota_cek(soup)
@@ -88,18 +87,16 @@ def _alan_ayikla(bilgi: dict, txt: str) -> None:
     lower = txt.lower()
 
     # Son Giris / Last Login
-    if not bilgi["son_giris"]:
-        if "son giriş" in lower or "son giris" in lower or "last login" in lower:
-            parts = txt.split(":", 1)
-            if len(parts) > 1:
-                bilgi["son_giris"] = parts[1].strip()
+    if not bilgi["son_giris"] and ("son giriş" in lower or "son giris" in lower or "last login" in lower):
+        parts = txt.split(":", 1)
+        if len(parts) > 1:
+            bilgi["son_giris"] = parts[1].strip()
 
     # Konum / Location
-    if not bilgi["konum"]:
-        if "konum" in lower or "location" in lower:
-            parts = txt.split(":", 1)
-            if len(parts) > 1:
-                bilgi["konum"] = parts[1].strip()
+    if not bilgi["konum"] and ("konum" in lower or "location" in lower):
+        parts = txt.split(":", 1)
+        if len(parts) > 1:
+            bilgi["konum"] = parts[1].strip()
 
 
 def maksimum_bilgi_cek(html: str) -> dict:

@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import contextlib
 import random
 import socket
 import time
-from typing import Callable
+from collections.abc import Callable
 from urllib.parse import urlparse
 
 import requests
@@ -34,8 +35,8 @@ def ip_bul(url: str) -> str:
         raise ValueError("URL hatali")
     try:
         return socket.gethostbyname(host)
-    except socket.gaierror:
-        raise DNSHatasi(host)
+    except socket.gaierror as e:
+        raise DNSHatasi(host) from e
 
 
 def giris_yap(
@@ -159,10 +160,8 @@ def onceki_oturumu_kapat(session: requests.Session, html: str, login_url: str) -
     except (requests.RequestException, OSError):
         return False
     finally:
-        try:
+        with contextlib.suppress(Exception):
             session.close()
-        except Exception:
-            pass
 
 
 def cikis_yap(oturum: requests.Session | None) -> bool:
@@ -175,7 +174,5 @@ def cikis_yap(oturum: requests.Session | None) -> bool:
     except (requests.RequestException, OSError):
         return False
     finally:
-        try:
+        with contextlib.suppress(Exception):
             oturum.close()
-        except Exception:
-            pass
