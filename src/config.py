@@ -29,8 +29,12 @@ def _asset_yolu(dosya: str) -> Path:
     p = exe_dir / dosya
     if p.exists():
         return p
-    # Dev: kaynak dizin
-    return Path(__file__).resolve().parent / dosya
+    # Dev: once src/ altinda, sonra proje kokunde ara
+    src_dir = Path(__file__).resolve().parent
+    p = src_dir / dosya
+    if p.exists():
+        return p
+    return src_dir.parent / dosya
 
 # Versiyon - Tek kaynak
 __version__ = "1.0.0"
@@ -41,7 +45,7 @@ CIKIS_URL = "https://wifi.gsb.gov.tr/cikisSon.html?logout=1"
 
 # Dosya yollari
 AYAR_DOSYASI = Path(__file__).with_name("user_config.json")
-WIFI_IMG_YOLU = _asset_yolu("wifi.png")
+WIFI_IMG_YOLU = _asset_yolu("wifi.ico")
 
 # Ag ayarlari
 TIMEOUT = 15

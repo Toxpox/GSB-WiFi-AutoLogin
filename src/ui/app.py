@@ -8,7 +8,6 @@ import time
 import requests
 import customtkinter as ctk
 from tkinter import messagebox
-from PIL import Image, ImageTk
 
 from config import (
     GIRIS_URL,
@@ -42,9 +41,7 @@ class Uygulama:
 
         # Pencere ikonu (taskbar + sol ust kose)
         try:
-            _img = Image.open(WIFI_IMG_YOLU)
-            self._icon_photo = ImageTk.PhotoImage(_img)
-            self.ana.iconphoto(True, self._icon_photo)
+            self.ana.iconbitmap(str(WIFI_IMG_YOLU))
         except Exception:
             pass
 
