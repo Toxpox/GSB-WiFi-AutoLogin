@@ -20,6 +20,7 @@ dev = [
     "pytest-cov>=6",
     "ruff>=0.4",
     "mypy>=1.8",
+    "types-requests>=2.31",
     "pyinstaller>=6",
 ]
 

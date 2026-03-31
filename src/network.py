@@ -157,7 +157,7 @@ def onceki_oturumu_kapat(session: requests.Session, html: str, login_url: str) -
             timeout=TIMEOUT,
             allow_redirects=True,
         )
-        return r.status_code < 400
+        return bool(r.status_code < 400)
     except (requests.RequestException, OSError):
         return False
     finally:
