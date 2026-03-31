@@ -32,7 +32,6 @@ Bu uygulama, yalnızca GSB/KYK captive portalı için tasarlanmıştır. Kimlik 
 - **Otomatik Giriş:** Kullanıcı adınızı kaydederek tek tıkla giriş yapın
 - **Hoşgeldin Ekranı:** Başarılı girişten sonra kullanıcı bilgileri ve kota durumu
 - **Kota Takibi:** Kalan kota, yüzde göstergesi ve yenilenme tarihi
-- **TR/EN Destek:** Portal Türkçe veya İngilizce olsa da çalışır
 - **Sistem Günlüğü:** Tüm işlemleri renkli log penceresiyle takip edin
 - **Animasyonlu UI:** Durum göstergeleri ve focus efektleri
 - **Oturum Yönetimi:** Güvenli çıkış yapma desteği
