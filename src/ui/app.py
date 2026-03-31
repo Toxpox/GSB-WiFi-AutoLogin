@@ -12,7 +12,7 @@ import requests
 
 from config import (
     GIRIS_URL,
-    WIFI_IMG_YOLU,
+    WIFI_ICO_YOLU,
     __version__,
     kayitli_kullanici_al,
     kullanici_kaydet,
@@ -42,7 +42,7 @@ class Uygulama:
 
         # Pencere ikonu (taskbar + sol ust kose)
         with contextlib.suppress(Exception):
-            self.ana.iconbitmap(str(WIFI_IMG_YOLU))
+            self.ana.iconbitmap(str(WIFI_ICO_YOLU))
 
         ctk.set_appearance_mode("dark")
 

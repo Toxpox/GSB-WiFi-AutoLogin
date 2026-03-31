@@ -8,6 +8,8 @@ a = Analysis(
     binaries=[],
     datas=[
         ("src/LoginPage.png", "."),
+        ("src/wifi.png", "."),
+        ("wifi.ico", "."),
     ],
     hiddenimports=[
         "customtkinter",
@@ -40,4 +42,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon="wifi.ico",
 )

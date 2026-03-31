@@ -47,7 +47,8 @@ CIKIS_URL = "https://wifi.gsb.gov.tr/cikisSon.html?logout=1"
 
 # Dosya yollari
 AYAR_DOSYASI = Path(__file__).with_name("user_config.json")
-WIFI_IMG_YOLU = _asset_yolu("wifi.ico")
+WIFI_ICO_YOLU = _asset_yolu("wifi.ico")
+WIFI_IMG_YOLU = _asset_yolu("wifi.png")
 
 # Ag ayarlari
 TIMEOUT = 15
