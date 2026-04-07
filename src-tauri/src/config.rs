@@ -2,7 +2,9 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
+#[allow(dead_code)]
 pub const VERSION: &str = "1.5.0";
+#[allow(dead_code)]
 pub const GIRIS_URL: &str = "https://wifi.gsb.gov.tr/j_spring_security_check";
 pub const CIKIS_URL: &str = "https://wifi.gsb.gov.tr/cikisSon.html?logout=1";
 pub const TIMEOUT_SECS: u64 = 15;
