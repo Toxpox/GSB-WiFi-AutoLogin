@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GSB WiFi AutoLogin</title>
+    <link rel="stylesheet" href="css/theme.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/giris.css">
+    <link rel="stylesheet" href="css/hosgeldin.css">
+    <link rel="stylesheet" href="css/log.css">
+</head>
+<body>
+    <!-- Giris Ekrani -->
+    <div id="ekran-giris" class="ekran aktif">
+        <div class="ust-alan">
+            <div class="ikon-kutu">
+                <img src="assets/wifi.png" width="40" height="40" alt="WiFi">
+            </div>
+            <h1>GSB WiFi</h1>
+            <p class="alt-baslik">Otomatik Bağlantı Sistemi</p>
+        </div>
+
+        <div class="kart form-kart">
+            <div class="kart-ic">
+                <label class="alan-label">&#x1f464; Kullanıcı Adı</label>
+                <input id="kullanici" class="giris-alani" placeholder="TC Kimlik No" autocomplete="off">
+
+                <label class="alan-label">&#x1f510; Şifre</label>
+                <input id="sifre" class="giris-alani" type="password" placeholder="••••••••">
+
+                <button id="giris-btn" class="btn-ana">Bağlan</button>
+
+                <div id="durum" class="durum-rozeti durum-bekle">
+                    <span class="nokta"></span>
+                    <span class="durum-yazi">Hazır</span>
+                </div>
+            </div>
+        </div>
+
+        <p class="ssl-uyari">&#x1f513; SSL doğrulaması kapalı (captive portal gereksinimi)</p>
+        <button id="log-btn-giris" class="btn-log">&#x1f4cb; Sistem Günlüğü</button>
+        <p class="egitim-uyari">&#x26a0; Bu uygulama eğitim amaçlıdır.</p>
+    </div>
+
+    <!-- Hosgeldin Ekrani -->
+    <div id="ekran-hosgeldin" class="ekran gizli">
+        <div class="scroll-alan">
+            <div class="basari-ikon">
+                <span>&#x2713;</span>
+            </div>
+            <h1>Hoş Geldiniz!</h1>
+            <p id="isim-lbl" class="isim"></p>
+
+            <div class="durum-rozeti durum-basari baglanti-rozet">
+                <span class="nokta"></span>
+                <span> Bağlantı Aktif</span>
+            </div>
+
+            <!-- Kullanici bilgi karti -->
+            <div id="bilgi-kart" class="kart gizli">
+                <div class="kart-ic">
+                    <h3>&#x1f464; Kullanıcı Bilgileri</h3>
+                    <p id="son-giris" class="bilgi-satir"></p>
+                    <p id="konum-bilgi" class="bilgi-satir"></p>
+                </div>
+            </div>
+
+            <!-- Kota karti -->
+            <div id="kota-kart" class="kart gizli">
+                <div class="kart-ic">
+                    <h3>&#x1f4ca; Kota Bilgileri</h3>
+                    <div class="kota-bar-dis">
+                        <div id="kota-bar" class="kota-bar-ic"></div>
+                    </div>
+                    <p id="kota-yuzde" class="kota-yuzde"></p>
+                    <p id="kota-detay" class="kota-detay"></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="alt-butonlar">
+            <button id="log-btn-hosgeldin" class="btn-log">&#x1f4cb; Sistem Günlüğü</button>
+            <button id="cikis-btn" class="btn-ikinci">Çıkış Yap</button>
+        </div>
+    </div>
+
+    <!-- Modal Dialog -->
+    <div id="modal-overlay" class="modal-overlay gizli">
+        <div class="modal-kutu">
+            <div id="modal-ikon" class="modal-ikon"></div>
+            <h2 id="modal-baslik" class="modal-baslik"></h2>
+            <p id="modal-mesaj" class="modal-mesaj"></p>
+            <div id="modal-butonlar" class="modal-butonlar"></div>
+        </div>
+    </div>
+
+    <!-- Log Panel (overlay) -->
+    <div id="log-panel" class="log-panel">
+        <div class="log-baslik">
+            <span>&#x1f4cb; Sistem Günlüğü</span>
+            <div class="log-butonlar">
+                <button id="log-temizle" class="btn-log-kucuk">Temizle</button>
+                <button id="log-kapat" class="btn-log-kucuk">Kapat</button>
+            </div>
+        </div>
+        <div id="log-icerik" class="log-icerik"></div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script src="js/log.js"></script>
+    <script src="js/giris.js"></script>
+    <script src="js/hosgeldin.js"></script>
+</body>
+</html>

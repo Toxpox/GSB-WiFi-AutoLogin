@@ -1,0 +1,115 @@
+/* Ekran gecisleri */
+.ekran {
+    position: absolute;
+    inset: 0;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.ekran.gizli {
+    opacity: 0;
+    transform: translateX(30px);
+    pointer-events: none;
+    display: flex !important;
+    visibility: hidden;
+}
+.ekran.aktif {
+    opacity: 1;
+    transform: translateX(0);
+    visibility: visible;
+}
+
+/* Ust alan */
+.ust-alan {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.ikon-kutu {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    background: var(--kart);
+    border: 1px solid var(--cizgi);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.ikon-kutu img {
+    width: 40px;
+    height: 40px;
+}
+
+.ust-alan h1 {
+    font-size: 26px;
+    font-weight: 700;
+    margin-top: 12px;
+    color: var(--beyaz);
+}
+
+.alt-baslik {
+    font-size: 12px;
+    color: var(--gri-koyu);
+    margin-top: 2px;
+}
+
+/* Form karti */
+.form-kart {
+    margin-bottom: 16px;
+}
+
+.kart-ic {
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.alan-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gri);
+    margin-bottom: 6px;
+}
+
+.kart-ic .giris-alani {
+    margin-bottom: 16px;
+}
+
+.kart-ic .giris-alani:last-of-type {
+    margin-bottom: 20px;
+}
+
+.kart-ic .durum-rozeti {
+    align-self: center;
+    margin-top: 16px;
+}
+
+/* Alt bilgiler */
+.ssl-uyari {
+    font-size: 10px;
+    color: var(--sari);
+    text-align: center;
+    margin-bottom: 4px;
+}
+
+.btn-log {
+    width: 100%;
+    height: 36px;
+    border: 1px solid var(--cizgi);
+    border-radius: var(--radius-sm);
+    background: var(--kart);
+    color: var(--gri-koyu);
+    font-family: var(--font);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+.btn-log:hover { background: var(--kart2); }
+
+.egitim-uyari {
+    font-size: 11px;
+    color: var(--gri-koyu);
+    text-align: center;
+    margin-top: 16px;
+}

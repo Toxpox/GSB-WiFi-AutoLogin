@@ -1,0 +1,87 @@
+#ekran-hosgeldin {
+    display: flex;
+    flex-direction: column;
+}
+
+.scroll-alan {
+    flex: 1;
+    overflow-y: auto;
+    text-align: center;
+    padding-bottom: 10px;
+}
+
+.basari-ikon {
+    width: 70px;
+    height: 70px;
+    border-radius: 35px;
+    background: var(--yesil-koyu);
+    border: 3px solid var(--yesil);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 10px;
+}
+.basari-ikon span {
+    font-size: 36px;
+    font-weight: bold;
+    color: var(--yesil);
+}
+
+#ekran-hosgeldin h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--beyaz);
+    margin-top: 14px;
+    margin-bottom: 4px;
+}
+
+.isim {
+    font-size: 16px;
+    color: var(--mor-acik);
+    margin-bottom: 12px;
+}
+
+.baglanti-rozet {
+    margin-bottom: 16px;
+}
+
+/* Bilgi karti */
+#bilgi-kart, #kota-kart {
+    text-align: left;
+    margin-top: 10px;
+}
+
+#bilgi-kart h3, #kota-kart h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gri);
+    margin-bottom: 8px;
+}
+
+.bilgi-satir {
+    font-size: 13px;
+    color: var(--beyaz);
+    margin-top: 4px;
+}
+
+.kota-yuzde {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--beyaz);
+    margin-top: 6px;
+}
+
+.kota-detay {
+    font-size: 12px;
+    color: var(--gri);
+    margin-top: 4px;
+    white-space: pre-line;
+}
+
+/* Alt butonlar */
+.alt-butonlar {
+    padding-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}

@@ -1,145 +1,76 @@
-# GSB WiFi Auto Login
-
-[![CI](https://github.com/Toxpox/GSB-WiFi-AutoLogin/actions/workflows/ci.yml/badge.svg)](https://github.com/Toxpox/GSB-WiFi-AutoLogin/actions/workflows/ci.yml)
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin?ref=badge_shield)
+# GSB WiFi AutoLogin
 
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-1.0.0-blue.svg?cacheSeconds=2592000" />
+  <img alt="Version" src="https://img.shields.io/badge/version-1.5.0-blue.svg?cacheSeconds=2592000" />
   <a href="https://github.com/Toxpox/GSB-WiFi-AutoLogin/blob/main/LICENSE" target="_blank">
   <img alt="License: GPLv3" src="https://img.shields.io/badge/License-GPLv3-blue.svg" />
   </a>
   <img alt="Platform" src="https://img.shields.io/badge/Platform-Windows-blue.svg" />
-  <img alt="Python" src="https://img.shields.io/badge/Python-3.10+-green.svg" />
+  <img alt="Rust" src="https://img.shields.io/badge/Rust-Tauri%20v2-orange.svg" />
 </p>
 
-KYK yurtlarında kullanılan GSB WiFi ağına otomatik giriş yapan modern masaüstü uygulaması. Dark tema arayüzü ile kullanıcı bilgilerinizi ve kota durumunuzu kolayca takip edebilirsiniz.
+KYK yurtlarinda kullanilan GSB WiFi agina otomatik giris yapan modern masaustu uygulamasi. Rust + Tauri v2 ile gelistirilmistir.
 
-### [Anasayfa](https://github.com/Toxpox/GSB-WiFi-AutoLogin)
+## Ozellikler
 
-## Güvenlik Uyarısı
+- **Modern Arayuz:** Dark tema tasarim, animasyonlu UI
+- **Otomatik Giris:** Kullanici adinizi kaydederek tek tikla giris yapin
+- **Hosgeldin Ekrani:** Basarili giristen sonra kullanici bilgileri ve kota durumu
+- **Kota Takibi:** Kalan kota, yuzde gostergesi ve yenilenme tarihi
+- **Sistem Gunlugu:** Tum islemleri renkli log penceresiyle takip edin
+- **Sifreleme:** AES-GCM ile kullanici bilgileri sifrelenir
+- **Oturum Yonetimi:** Guvenli cikis yapma destegi
+- **Yeniden Deneme:** Ag hatalarinda exponential backoff ile otomatik tekrar
 
-Bu uygulama, yalnızca GSB/KYK captive portalı için tasarlanmıştır. Kimlik bilgileriniz **sadece kendi bilgisayarınızda** `user_config.json` dosyasında saklanır ve dışarıya aktarılmaz. SSL doğrulaması captive portal gereksinimi nedeniyle devre dışıdır. Uygulamayı güvenilir olmayan kaynaklardan indirmeyiniz.
+## Indirme
 
-## Ekran Görüntüsü
+[Releases](https://github.com/Toxpox/GSB-WiFi-AutoLogin/releases) sayfasindan indirebilirsiniz.
 
-<div align="center">
-<img src="src/LoginPage.png" alt="LoginPage" width="400" />
-</div>
+### Installer vs Portable
 
-## Özellikler
+| | Installer (.exe setup) | Portable (.exe) |
+|---|---|---|
+| **Kurulum** | Klasik kurulum sihirbazi ile kurulur | Kurulum gerektirmez, dogrudan calistirilir |
+| **Konum** | `Program Files` altina kurulur | Herhangi bir klasorden calisir (USB dahil) |
+| **Baslat Menusu** | Kisayol olusturur | Kisayol olusturmaz |
+| **Kaldirma** | Program Ekle/Kaldir'dan kaldirilir | Dosyayi silmek yeterlidir |
+| **Guncelleme** | Yeni installer ile guncellenir | Yeni dosya ile degistirilir |
 
-- **Modern Arayüz:** CustomTkinter ile geliştirilmiş dark tema tasarım
-- **Otomatik Giriş:** Kullanıcı adınızı kaydederek tek tıkla giriş yapın
-- **Hoşgeldin Ekranı:** Başarılı girişten sonra kullanıcı bilgileri ve kota durumu
-- **Kota Takibi:** Kalan kota, yüzde göstergesi ve yenilenme tarihi
-- **Sistem Günlüğü:** Tüm işlemleri renkli log penceresiyle takip edin
-- **Animasyonlu UI:** Durum göstergeleri ve focus efektleri
-- **Oturum Yönetimi:** Güvenli çıkış yapma desteği
-- **Yeniden Deneme:** Ağ hatalarında exponential backoff ile otomatik tekrar
-- **Hata Yönetimi:** Özel hata sınıflarıyla kullanıcıya anlaşılır mesajlar
+> Her iki surum de ayni islevi gorur. Tercih size kalmis.
 
-## Kurulum ve Kullanım
+## Guvenlik Uyarisi
 
-### Hazır Çalıştırılabilir
+Bu uygulama, yalnizca GSB/KYK captive portali icin tasarlanmistir. Kimlik bilgileriniz **sadece kendi bilgisayarinizda** `user_config.json` dosyasinda AES-GCM ile sifrelenerek saklanir ve disariya aktarilmaz. SSL dogrulamasi captive portal gereksinimi nedeniyle devre disidir.
 
-1. [Releases](https://github.com/Toxpox/GSB-WiFi-AutoLogin/releases) sayfasından `GSB_AutoLogin.exe` dosyasını indirin
-2. Bilgisayarınızın GSB WiFi ağına bağlı olduğundan emin olun
-3. `GSB_AutoLogin.exe` dosyasını çalıştırın
-4. Kullanıcı adı ve şifrenizi girerek **Bağlan** butonuna tıklayın
+## Gelistirme
 
-### Python ile Çalıştırma
+### Gereksinimler
+
+- [Rust](https://rustup.rs/) (stable)
+- [Node.js](https://nodejs.org/) (opsiyonel, frontend icin)
+- Windows 10/11
+
+### Derleme
 
 ```powershell
 git clone https://github.com/Toxpox/GSB-WiFi-AutoLogin.git
-cd GSB-WiFi-AutoLogin
-pip install -e .
-python src/gsb-autologin.py
+cd GSB-WiFi-AutoLogin/src-tauri
+cargo tauri build
 ```
 
-### Geliştirici Kurulumu
-
-```powershell
-pip install -e ".[dev]"
-ruff check src/
-mypy src/
-```
-
-## Proje Yapısı
-
-```
-GSB-WiFi-AutoLogin/
-├── src/
-│   ├── gsb-autologin.py     # Giriş noktası
-│   ├── main.py              # Uygulama başlatıcı
-│   ├── config.py            # Sabitler, renkler, versiyon, kullanıcı ayarları
-│   ├── errors.py            # Özel hata sınıfları (GSBHata, AğHatası, vb.)
-│   ├── network.py           # HTTP işlemleri, giriş/çıkış, retry mekanizması
-│   ├── parser.py            # HTML ayrıştırıcı (TR/EN destek, kota bilgileri)
-│   ├── ui/
-│   │   ├── app.py           # Ana uygulama sınıfı, ekran yönetimi
-│   │   ├── giris_ekrani.py  # Giriş formu ekranı
-│   │   ├── hosgeldin_ekrani.py  # Başarılı giriş ekranı, kota kartı
-│   │   ├── log_penceresi.py # Renkli log penceresi
-│   │   └── widgets.py       # Özel UI bileşenleri
-│   └── LoginPage.png        # Ekran görüntüsü
-├── .github/workflows/
-│   └── ci.yml               # CI: lint, format, tip kontrolü, build
-├── pyproject.toml            # Proje metadata ve bağımlılıklar
-├── GSB_AutoLogin.spec        # PyInstaller build spec
-├── LICENSE
-└── README.md
-```
-
-## Derleme
-
-### PyInstaller ile Derleme
-
-```powershell
-pip install -e ".[dev]"
-pyinstaller GSB_AutoLogin.spec
-```
-
-Çıktı: `dist/GSB_AutoLogin.exe`
-
-### Nuitka ile Derleme
-
-```powershell
-pip install nuitka
-python -m nuitka --standalone --onefile --enable-plugin=tk-inter --include-data-file=src/LoginPage.png=LoginPage.png --output-dir=buildtest --output-filename=GSB_AutoLogin_Nuitka.exe src/gsb-autologin.py
-```
-
-Çıktı: `buildtest/GSB_AutoLogin_Nuitka.exe`
-
-> **Not:** Nuitka, C derleyicisi gerektirir (MSVC veya MinGW). Derleme süresi PyInstaller'a göre daha uzundur ancak daha küçük ve hızlı çalıştırılabilir dosya üretir.
+Cikti: `src-tauri/target/release/bundle/nsis/` (installer) ve `src-tauri/target/release/` (portable exe)
 
 ## Teknolojiler
 
-| Teknoloji | Kullanım |
+| Teknoloji | Kullanim |
 |-----------|----------|
-| **Python 3.10+** | Ana dil |
-| **CustomTkinter** | Modern dark tema UI |
-| **Requests** | HTTP işlemleri |
-| **BeautifulSoup4** | Portal HTML ayrıştırma |
-| **PyInstaller** | Windows exe derleme |
-| **Nuitka** | Optimize edilmiş Windows exe derleme |
-| **ruff** | Lint ve format |
-| **mypy** | Statik tip kontrolü |
-| **GitHub Actions** | CI/CD pipeline |
-
-## SSS
-
-**Uygulama "Giriş Başarısız" diyor.**
-Kullanıcı adı (TC Kimlik No) ve şifrenizi kontrol edin. GSB WiFi ağına bağlı olduğunuzdan emin olun.
-
-**Antivirüs uyarısı veriyor.**
-PyInstaller/Nuitka ile derlenmiş uygulamalar bazı antivirüslerde false positive oluşturabilir. Kaynak kodu açıktır, kendiniz derleyebilirsiniz.
-
-**Kota bilgileri görünmüyor.**
-Kota bilgileri portal tarafından sağlanan HTML'den çekilir. Bazı durumlarda portal bu bilgileri geç yükleyebilir.
+| **Rust** | Backend, ag islemleri, sifreleme |
+| **Tauri v2** | Masaustu uygulama cercevesi |
+| **HTML/CSS/JS** | Frontend arayuz |
+| **AES-GCM** | Kullanici bilgileri sifreleme |
+| **reqwest** | HTTP islemleri |
 
 ## Lisans
 
 Copyright 2025 [Toxpox](https://github.com/Toxpox).
-Bu proje [GNU General Public License v3.0 (GPLv3)](https://github.com/Toxpox/GSB-WiFi-AutoLogin/blob/main/LICENSE) ile lisanslanmıştır.
-
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin?ref=badge_large)
+Bu proje [GNU General Public License v3.0 (GPLv3)](https://github.com/Toxpox/GSB-WiFi-AutoLogin/blob/main/LICENSE) ile lisanslanmistir.

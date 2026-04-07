@@ -1,6 +1,6 @@
 [project]
 name = "gsb-wifi-autologin"
-version = "1.0.0"
+version = "1.5.0"
 description = "GSB WiFi agina otomatik giris uygulamasi"
 readme = "README.md"
 license = {file = "LICENSE"}

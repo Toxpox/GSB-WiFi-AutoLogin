@@ -1,0 +1,40 @@
+:root {
+    --arkaplan:     #13111c;
+    --kart:         #1a1825;
+    --kart2:        #221f2e;
+    --input-bg:     #0d0b14;
+    --mor:          #7c3aed;
+    --mor-hover:    #8b5cf6;
+    --mor-acik:     #a78bfa;
+    --yesil:        #10b981;
+    --yesil-koyu:   #064e3b;
+    --sari:         #f59e0b;
+    --sari-koyu:    #78350f;
+    --kirmizi:      #ef4444;
+    --kirmizi-koyu: #7f1d1d;
+    --beyaz:        #f8fafc;
+    --gri:          #a1a1aa;
+    --gri-koyu:     #71717a;
+    --cizgi:        #27272a;
+    --focus:        #7c3aed;
+
+    --font:         'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-mono:    'Cascadia Code', 'Consolas', monospace;
+
+    --radius:       14px;
+    --radius-sm:    10px;
+    --radius-lg:    18px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: var(--font);
+    background: var(--arkaplan);
+    color: var(--beyaz);
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    height: 100vh;
+    width: 100vw;
+}
