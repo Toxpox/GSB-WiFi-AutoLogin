@@ -34,6 +34,11 @@ async function girisBaslat() {
         logYaz('✓ Bağlantı başarılı!', 'basarili');
         logYaz('  Kullanıcı: ' + sonuc.bilgi.isim, 'soluk');
         if (sonuc.ip) logYaz('  Sunucu: ' + sonuc.ip, 'soluk');
+        if (sonuc.kayit_hatasi) {
+            logYaz('Kayıt uyarısı: ' + sonuc.kayit_hatasi, 'uyari');
+        } else {
+            await profilleriYukle({ sessiz: true });
+        }
 
         const kota = sonuc.bilgi.kota || {};
         if (kota.kalan_mb && kota.toplam_mb) {
@@ -46,7 +51,10 @@ async function girisBaslat() {
         if (sonuc.bilgi.konum) logYaz('  Konum: ' + sonuc.bilgi.konum, 'soluk');
 
         durumGuncelle('Bağlı', 'basari');
-        setTimeout(function() { hosgeldinGoster(sonuc.bilgi); }, 600);
+        setTimeout(function() {
+            hosgeldinGoster(sonuc.bilgi);
+            yeniVersiyonKontrolEt();
+        }, 600);
 
     } catch (hataJson) {
         try {
@@ -115,7 +123,13 @@ async function maksimumCihazSor(bilgi, kullanici, sifre) {
         });
         logYaz('✓ Bağlantı başarılı!', 'basarili');
         durumGuncelle('Bağlı', 'basari');
+        if (sonuc.kayit_hatasi) {
+            logYaz('Kayıt uyarısı: ' + sonuc.kayit_hatasi, 'uyari');
+        } else {
+            await profilleriYukle({ sessiz: true });
+        }
         hosgeldinGoster(sonuc.bilgi);
+        yeniVersiyonKontrolEt();
     } catch (e) {
         logYaz('✗ Önceki cihaz bağlantısı düşürülemedi', 'hata');
         durumGuncelle('Hata', 'hata');

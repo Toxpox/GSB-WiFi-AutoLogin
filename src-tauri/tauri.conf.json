@@ -1,6 +1,6 @@
 {
   "productName": "GSB WiFi AutoLogin",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "identifier": "com.toxpox.gsb-wifi-autologin",
   "build": {
     "frontendDist": "../frontend"
@@ -24,6 +24,12 @@
     "active": true,
     "icon": ["icons/wifi.ico"],
     "targets": ["nsis"],
-    "publisher": "Toxpox"
+    "publisher": "Toxpox",
+    "windows": {
+      "nsis": {
+        "languages": ["Turkish"],
+        "displayLanguageSelector": false
+      }
+    }
   }
 }

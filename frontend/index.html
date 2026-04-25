@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="css/log.css">
 </head>
 <body>
+    <button id="github-btn" class="github-btn" type="button" title="GitHub" aria-label="GitHub deposunu aç">GitHub</button>
+
     <!-- Giris Ekrani -->
     <div id="ekran-giris" class="ekran aktif">
         <div class="ust-alan">
@@ -23,11 +25,23 @@
 
         <div class="kart form-kart">
             <div class="kart-ic">
-                <label class="alan-label">&#x1f464; Kullanıcı Adı</label>
+                <div class="profil-baslik-satiri">
+                    <label class="alan-label">&#x1f465; Profiller</label>
+                    <button id="profil-yenile-btn" class="ikon-btn" type="button" title="Profilleri yenile" aria-label="Profilleri yenile">&#x21bb;</button>
+                </div>
+                <div id="profil-panel" class="profil-panel">
+                    <div id="profil-listesi" class="profil-listesi"></div>
+                    <p id="profil-bos" class="profil-bos">Kayıtlı profil yok</p>
+                </div>
+
+                <label class="alan-label" for="kullanici">&#x1f464; Kullanıcı Adı</label>
                 <input id="kullanici" class="giris-alani" placeholder="TC Kimlik No" autocomplete="off">
 
-                <label class="alan-label">&#x1f510; Şifre</label>
-                <input id="sifre" class="giris-alani" type="password" placeholder="••••••••">
+                <div class="alan-baslik-satiri">
+                    <label class="alan-label" for="sifre">&#x1f510; Şifre</label>
+                    <button id="sifre-goster-btn" class="ikon-btn" type="button" title="Şifreyi göster" aria-label="Şifreyi göster">&#x1f441;</button>
+                </div>
+                <input id="sifre" class="giris-alani" type="password" placeholder="••••••••" autocomplete="current-password">
 
                 <button id="giris-btn" class="btn-ana">Bağlan</button>
 

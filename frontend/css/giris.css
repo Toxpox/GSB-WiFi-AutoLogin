@@ -20,6 +20,34 @@
     visibility: visible;
 }
 
+#ekran-giris {
+    overflow-y: auto;
+}
+
+.github-btn {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 60;
+    height: 30px;
+    min-width: 62px;
+    border: 1px solid var(--cizgi);
+    border-radius: var(--radius-sm);
+    background: rgba(11, 15, 20, 0.88);
+    color: var(--gri);
+    font-family: var(--font);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.github-btn:hover {
+    border-color: var(--focus);
+    background: var(--kart2);
+    color: var(--beyaz);
+}
+
 /* Ust alan */
 .ust-alan {
     text-align: center;
@@ -29,7 +57,7 @@
 .ikon-kutu {
     width: 64px;
     height: 64px;
-    border-radius: 18px;
+    border-radius: 10px;
     background: var(--kart);
     border: 1px solid var(--cizgi);
     display: inline-flex;
@@ -60,7 +88,7 @@
 }
 
 .kart-ic {
-    padding: 24px 20px;
+    padding: 18px 18px;
     display: flex;
     flex-direction: column;
 }
@@ -78,6 +106,124 @@
 
 .kart-ic .giris-alani:last-of-type {
     margin-bottom: 20px;
+}
+
+.profil-baslik-satiri,
+.alan-baslik-satiri {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 24px;
+}
+
+.ikon-btn {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--cizgi);
+    border-radius: var(--radius-sm);
+    background: var(--input-bg);
+    color: var(--gri);
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.ikon-btn:hover,
+.ikon-btn.aktif {
+    border-color: var(--focus);
+    color: var(--beyaz);
+    background: var(--kart2);
+}
+
+.profil-panel {
+    margin-bottom: 14px;
+}
+
+.profil-listesi {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 112px;
+    overflow-y: auto;
+}
+
+.profil-satir {
+    display: grid;
+    grid-template-columns: 1fr 32px;
+    gap: 8px;
+    min-height: 38px;
+}
+
+.profil-sec-btn,
+.profil-sil-btn {
+    border: 1px solid var(--cizgi);
+    border-radius: var(--radius-sm);
+    background: var(--input-bg);
+    color: var(--gri);
+    font-family: var(--font);
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.profil-sec-btn {
+    min-width: 0;
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    text-align: left;
+}
+
+.profil-ad {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.profil-aktif-etiket {
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--yesil);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 7px;
+}
+
+.profil-sil-btn {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.profil-satir.aktif .profil-sec-btn,
+.profil-sec-btn:hover,
+.profil-sil-btn:hover {
+    border-color: var(--focus);
+    background: var(--kart2);
+    color: var(--beyaz);
+}
+
+.profil-sil-btn:hover {
+    border-color: var(--kirmizi);
+    color: var(--kirmizi);
+}
+
+.profil-bos {
+    min-height: 38px;
+    border: 1px dashed var(--cizgi);
+    border-radius: var(--radius-sm);
+    color: var(--gri-koyu);
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .kart-ic .durum-rozeti {

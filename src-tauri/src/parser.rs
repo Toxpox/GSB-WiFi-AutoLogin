@@ -128,12 +128,6 @@ fn alan_ayikla(bilgi: &mut KullaniciBilgi, txt: &str) {
 fn kota_cek(document: &Html) -> HashMap<String, String> {
     let mut kota = HashMap::new();
 
-    let panel_sel =
-        match Selector::parse("#mainPanel\\:kotaDisplay label.ui-outputlabel") {
-            Ok(s) => s,
-            Err(_) => return kota,
-        };
-
     let td_sel = match Selector::parse("td") {
         Ok(s) => s,
         Err(_) => return kota,
@@ -144,37 +138,6 @@ fn kota_cek(document: &Html) -> HashMap<String, String> {
         Err(_) => return kota,
     };
 
-    // Kota panelindeki label'lari topla
-    let labels: Vec<_> = document.select(&panel_sel).collect();
-
-    for label_el in &labels {
-        let text = label_el
-            .text()
-            .collect::<String>()
-            .trim()
-            .to_string();
-        if text.is_empty() || text == "------" {
-            continue;
-        }
-
-        // Parent td'yi bul, sibling td icindeki label'i al
-        // scraper ile parent traversal sinirli oldugu icin
-        // tum tr icindeki td ciftlerini isle
-        let key = text.trim_end_matches(':');
-        let norm = kota_normalize(key);
-
-        // Bir sonraki label'i deger olarak kullanmak icin
-        // labels dizisinde siradaki elemana bak
-        // Bu basit yaklasim panel yapisina gore calisir
-        if norm != key {
-            // Bilinen bir anahtar bulduk, su anki index'in bir sonraki label'i deger
-            // Bu mantik asagida pair olarak islenir
-        }
-        // Pair isleme: labels dizisinde index bazli degil, HTML yapisina gore
-        // Daha saglam bir yaklasim: tr > td ciftleri
-    }
-
-    // Alternatif yaklasim: tr icindeki td ciftlerini isle
     let tr_sel = match Selector::parse("#mainPanel\\:kotaDisplay tr") {
         Ok(s) => s,
         Err(_) => return kota,
@@ -212,23 +175,87 @@ pub fn maksimum_bilgi_cek(html: &str) -> crate::errors::CihazBilgisi {
     let hucreler: Vec<_> = document.select(&sel).collect();
 
     if hucreler.len() >= 3 {
-        bilgi.baslangic = hucreler[0]
-            .text()
-            .collect::<String>()
-            .trim()
-            .to_string();
-        bilgi.mac = hucreler[1]
-            .text()
-            .collect::<String>()
-            .trim()
-            .to_string();
-        bilgi.konum = hucreler[2]
-            .text()
-            .collect::<String>()
-            .trim()
-            .to_string();
+        bilgi.baslangic = hucreler[0].text().collect::<String>().trim().to_string();
+        bilgi.mac = hucreler[1].text().collect::<String>().trim().to_string();
+        bilgi.konum = hucreler[2].text().collect::<String>().trim().to_string();
     }
     bilgi
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn basarili_giris_bilgilerini_ayiklar() {
+        let html = r#"
+            <div id="content-div">
+                <center>
+                    <span class="myinfo">TEST KULLANICI </span>
+                    <label class="myinfo">Last Login: 25.04.2026 05:07</label>
+                    <label class="myinfo">Location : ABC ÖĞRENCİ YURDU</label>
+                </center>
+            </div>
+            <table id="mainPanel:kotaDisplay">
+                <tr>
+                    <td><label>Total Quota (MB):</label></td>
+                    <td><label>10240</label></td>
+                </tr>
+                <tr>
+                    <td><label>Total Remaining Quota (MB):</label></td>
+                    <td><label>5120</label></td>
+                </tr>
+                <tr>
+                    <td><label>Next Refresh Date:</label></td>
+                    <td><label>2026-05-01</label></td>
+                </tr>
+            </table>
+        "#;
+
+        let bilgi = bilgi_cek(html);
+
+        assert_eq!(bilgi.isim, "TEST KULLANICI");
+        assert_eq!(bilgi.son_giris, "25.04.2026 05:07");
+        assert_eq!(bilgi.konum, "ABC ÖĞRENCİ YURDU");
+        assert_eq!(
+            bilgi.kota.get("toplam_mb").map(String::as_str),
+            Some("10240")
+        );
+        assert_eq!(bilgi.kota.get("kalan_mb").map(String::as_str), Some("5120"));
+        assert_eq!(
+            bilgi.kota.get("yenilenme").map(String::as_str),
+            Some("2026-05-01")
+        );
+    }
+
+    #[test]
+    fn maksimum_cihaz_bilgilerini_ayiklar() {
+        let html = r#"
+            <table id="j_idt20_data">
+                <tr>
+                    <td role="gridcell">2026-04-24 04:59</td>
+                    <td role="gridcell">AA:BB:CC:DD:EE:FF</td>
+                    <td role="gridcell">Yurt WiFi</td>
+                    <td>
+                        <form id="mainForm">
+                            <button type="submit" id="disconnectButton"></button>
+                            <input name="javax.faces.ViewState" value="view-state-1">
+                        </form>
+                    </td>
+                </tr>
+            </table>
+        "#;
+
+        let cihaz = maksimum_bilgi_cek(html);
+        let form = maksimum_form_bilgi_cek(html);
+
+        assert_eq!(cihaz.baslangic, "2026-04-24 04:59");
+        assert_eq!(cihaz.mac, "AA:BB:CC:DD:EE:FF");
+        assert_eq!(cihaz.konum, "Yurt WiFi");
+        assert_eq!(form.form_id, "mainForm");
+        assert_eq!(form.buton_id, "disconnectButton");
+        assert_eq!(form.viewstate, "view-state-1");
+    }
 }
 
 pub fn maksimum_form_bilgi_cek(html: &str) -> FormBilgi {

@@ -1,22 +1,37 @@
 // Log sistemi
 const logSatirlar = [];
+const MAX_LOG_SATIR = 300;
 
 function logYaz(mesaj, tip) {
-    logSatirlar.push({ mesaj: mesaj, tip: tip || '' });
-    logPenceresiGuncelle();
+    const satir = { mesaj: mesaj || '', tip: tip || '' };
+    logSatirlar.push(satir);
+    if (logSatirlar.length > MAX_LOG_SATIR) {
+        logSatirlar.shift();
+    }
+
+    const alan = document.getElementById('log-icerik');
+    if (!alan) return;
+    if (alan.children.length >= MAX_LOG_SATIR && alan.firstElementChild) {
+        alan.removeChild(alan.firstElementChild);
+    }
+    alan.appendChild(logSatiriOlustur(satir));
+    alan.scrollTop = alan.scrollHeight;
+}
+
+function logSatiriOlustur(s) {
+    const el = document.createElement('div');
+    el.className = 'log-satir' + (s.tip ? ' ' + s.tip : '');
+    el.textContent = s.mesaj;
+    return el;
 }
 
 function logPenceresiGuncelle() {
     const alan = document.getElementById('log-icerik');
     if (!alan) return;
-    alan.innerHTML = logSatirlar.map(function(s) {
-        const cls = s.tip ? ' ' + s.tip : '';
-        const escaped = s.mesaj
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-        return '<div class="log-satir' + cls + '">' + escaped + '</div>';
-    }).join('');
+    alan.textContent = '';
+    logSatirlar.forEach(function(s) {
+        alan.appendChild(logSatiriOlustur(s));
+    });
     alan.scrollTop = alan.scrollHeight;
 }
 

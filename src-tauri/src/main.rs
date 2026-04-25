@@ -17,6 +17,13 @@ fn main() {
             commands::giris,
             commands::cikis,
             commands::kayitli_kullanici,
+            commands::profilleri_listele,
+            commands::profil_yukle,
+            commands::profil_sil,
+            commands::app_bilgisi,
+            commands::github_ac,
+            commands::github_link_ac,
+            commands::yeni_versiyon_kontrol,
             commands::maksimum_cihaz_isle,
             commands::tc_maskele,
         ])

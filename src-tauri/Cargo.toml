@@ -1,6 +1,6 @@
 [package]
 name = "gsb-wifi-autologin"
-version = "1.5.0"
+version = "1.6.0"
 edition = "2021"
 
 [build-dependencies]
@@ -8,12 +8,11 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
-tauri-plugin-shell = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 reqwest = { version = "0.12", features = ["json", "cookies", "rustls-tls"], default-features = false }
 scraper = "0.22"
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1", default-features = false, features = ["net", "sync", "time"] }
 aes-gcm = "0.10"
 pbkdf2 = { version = "0.12", features = ["simple"] }
 sha2 = "0.10"

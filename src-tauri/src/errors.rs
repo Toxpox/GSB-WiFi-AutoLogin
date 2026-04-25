@@ -34,6 +34,12 @@ pub enum GSBError {
 
     #[error("Portal yapisi degismis")]
     PortalDegisti,
+
+    #[error("{kullanici_mesaji}")]
+    AyarHatasi {
+        mesaj: String,
+        kullanici_mesaji: String,
+    },
 }
 
 #[derive(Debug, Serialize, Clone, Default)]

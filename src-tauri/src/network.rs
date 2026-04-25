@@ -22,8 +22,12 @@ pub async fn ip_bul(url: &str) -> Result<String, GSBError> {
         host: url.to_string(),
         kullanici_mesaji: "URL hatali".into(),
     })?;
-    let host = parsed.host_str().unwrap_or("");
-    let addr = tokio::net::lookup_host(format!("{}:443", host))
+    let host = parsed.host_str().ok_or_else(|| GSBError::DNSHatasi {
+        host: url.to_string(),
+        kullanici_mesaji: "URL hatali".into(),
+    })?;
+    let port = parsed.port_or_known_default().unwrap_or(443);
+    let addr = tokio::net::lookup_host(format!("{}:{}", host, port))
         .await
         .map_err(|_| GSBError::DNSHatasi {
             host: host.to_string(),
@@ -55,30 +59,44 @@ pub async fn giris_yap(
         match client.post(url).form(&veri).send().await {
             Ok(r) => {
                 let final_url = r.url().to_string();
-                let body = r.text().await.unwrap_or_default();
+                let body = match r.text().await {
+                    Ok(body) => body,
+                    Err(e) => {
+                        son_hata = Some(GSBError::AgHatasi {
+                            mesaj: e.to_string(),
+                            kullanici_mesaji: "Sunucu yaniti okunamadi. Lutfen tekrar deneyin."
+                                .into(),
+                        });
+                        String::new()
+                    }
+                };
 
-                if final_url.contains("maksimumCihazHakkiDolu") {
-                    let cihaz = parser::maksimum_bilgi_cek(&body);
-                    return Err(GSBError::MaksimumCihaz {
-                        cihaz_bilgisi: cihaz,
-                        html: body,
-                    });
+                if body.is_empty() {
+                    // Body okunamadiginda retry/backoff akisi devam etsin.
+                } else {
+                    if final_url.contains("maksimumCihazHakkiDolu") {
+                        let cihaz = parser::maksimum_bilgi_cek(&body);
+                        return Err(GSBError::MaksimumCihaz {
+                            cihaz_bilgisi: cihaz,
+                            html: body,
+                        });
+                    }
+                    if final_url.contains("j_spring_security_check")
+                        || final_url.contains("login.html")
+                    {
+                        return Err(GSBError::GirisBasarisiz {
+                            mesaj: "Yanlis kimlik".into(),
+                            kullanici_mesaji: "Kullanici adi veya sifrenizi kontrol edin.".into(),
+                        });
+                    }
+                    if !body.contains("content-div") {
+                        return Err(GSBError::GirisBasarisiz {
+                            mesaj: "Dogrulanamadi".into(),
+                            kullanici_mesaji: "Giris dogrulanamadi".into(),
+                        });
+                    }
+                    return Ok(body);
                 }
-                if final_url.contains("j_spring_security_check")
-                    || final_url.contains("login.html")
-                {
-                    return Err(GSBError::GirisBasarisiz {
-                        mesaj: "Yanlis kimlik".into(),
-                        kullanici_mesaji: "Kullanici adi veya sifrenizi kontrol edin.".into(),
-                    });
-                }
-                if !body.contains("content-div") {
-                    return Err(GSBError::GirisBasarisiz {
-                        mesaj: "Dogrulanamadi".into(),
-                        kullanici_mesaji: "Giris dogrulanamadi".into(),
-                    });
-                }
-                return Ok(body);
             }
             Err(e) if e.is_timeout() => {
                 son_hata = Some(GSBError::ZamanAsimi);

@@ -1,10 +1,12 @@
 <div align="center">
 
 # 🛜 GSB WiFi AutoLogin
+
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin.svg?type=shield&issueType=security)](https://app.fossa.com/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin?ref=badge_shield&issueType=security)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin.svg?type=shield&issueType=license)](https://app.fossa.com/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin?ref=badge_shield&issueType=license)
+
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-1.5.0-blue.svg?cacheSeconds=2592000&style=for-the-badge" />
+  <img alt="Version" src="https://img.shields.io/badge/version-1.6.0-blue.svg?cacheSeconds=2592000&style=for-the-badge" />
   <a href="https://github.com/Toxpox/GSB-WiFi-AutoLogin/blob/main/LICENSE" target="_blank">
     <img alt="License: GPLv3" src="https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge" />
   </a>
@@ -21,20 +23,26 @@
 
 ## ✨ Özellikler
 
-- 🎨 **Modern Arayüz:** Dark tema tasarım ve akıcı animasyonlu UI.
-- ⚡ **Otomatik Giriş:** Kullanıcı adınızı ve şifrenizi kaydederek tek tıkla ağa bağlanın.
-- 👋 **Hoşgeldin Ekranı:** Başarılı girişten sonra kullanıcı bilgilerini ve anlık kota durumunu görün.
-- 📊 **Kota Takibi:** Kalan kota, yüzde göstergesi ve kotanın yenilenme tarihi elinizin altında.
-- 📜 **Sistem Günlüğü:** Tüm arka plan işlemlerini renkli log penceresiyle adım adım takip edin.
-- 🔒 **Şifreleme:** AES-GCM teknolojisi ile kullanıcı bilgileriniz yüksek güvenlikle şifrelenir.
-- 🚪 **Oturum Yönetimi:** İstediğiniz an güvenli çıkış yapma desteği.
-- 🔄 **Yeniden Deneme:** Ağ hatalarında *exponential backoff* algoritması ile akıllı ve otomatik tekrar bağlantı.
+- 🎨 **Modern Arayüz:** Koyu tema, kompakt giriş ekranı ve akıcı ekran geçişleri.
+- ⚡ **Otomatik Giriş:** Kullanıcı adı ve şifre ile tek tıkla GSB WiFi captive portalına bağlanma.
+- 👥 **Çoklu Profil:** Birden fazla kullanıcı hesabını yerelde kaydetme, seçme ve silme.
+- 👁️ **Şifre Kontrolü:** Giriş ekranında şifreyi göster/gizle desteği.
+- 👋 **Hoş Geldin Ekranı:** Başarılı girişten sonra kullanıcı, konum ve son giriş bilgilerini gösterme.
+- 📊 **Kota Takibi:** Kalan kota, yüzde göstergesi, kullanılan kota ve yenilenme tarihi.
+- 📜 **Sistem Günlüğü:** Giriş, çıkış, hata ve güncelleme kontrolü adımlarını log panelinden takip etme.
+- 🔒 **Şifreleme:** Kullanıcı bilgilerini `user_config.json` içinde AES-GCM ile şifreli saklama.
+- 🚪 **Oturum Yönetimi:** Aktif oturumu sonlandırma ve maksimum cihaz durumunda önceki oturumu düşürme.
+- 🔄 **Yeniden Deneme:** Ağ hatalarında exponential backoff ile kontrollü tekrar deneme.
+- 🧭 **GitHub Kısayolu:** Sağ üstteki GitHub butonu ile proje deposunu varsayılan tarayıcıda açma.
+- 🆕 **Sürüm Kontrolü:** Başarılı bağlantıdan sonra GitHub Releases üzerinden yeni sürüm denetimi.
 
 ---
 
 ## 📥 İndirme
 
-En güncel sürümü **[Releases](https://github.com/Toxpox/GSB-WiFi-AutoLogin/releases)** sayfasından hemen indirebilirsiniz.
+En güncel sürümü **[Releases](https://github.com/Toxpox/GSB-WiFi-AutoLogin/releases)** sayfasından indirebilirsiniz.
+
+Uygulama başarılı bağlantıdan sonra GitHub Releases üzerinden yeni sürümü kontrol eder. Yeni sürüm bulunursa kullanıcıdan onay alarak release sayfasını açar.
 
 ### 📦 Installer vs 🚀 Portable
 
@@ -46,33 +54,36 @@ En güncel sürümü **[Releases](https://github.com/Toxpox/GSB-WiFi-AutoLogin/r
 | **Kaldırma** | Windows "Program Ekle/Kaldır" menüsünden kaldırılır. | Sadece dosyayı silmek yeterlidir. |
 | **Güncelleme** | Yeni installer çalıştırılarak üzerine yazılır. | Eski dosya silinip yenisi ile değiştirilir. |
 
-> 💡 **Not:** Her iki sürüm de tamamen aynı işlevi görür. Kullanım alışkanlığınıza göre tercih yapabilirsiniz.
+> 💡 **Not:** Her iki sürüm de aynı uygulama mantığını kullanır. Kullanım alışkanlığınıza göre tercih yapabilirsiniz.
 
 ---
 
 ## ⚠️ Güvenlik Uyarısı
 
-Bu uygulama, **yalnızca GSB/KYK captive portali** için tasarlanmıştır. 
+Bu uygulama **yalnızca GSB/KYK captive portali** için tasarlanmıştır.
 
-Kimlik bilgileriniz **sadece kendi bilgisayarınızda** `user_config.json` dosyasında **AES-GCM ile şifrelenerek** saklanır ve hiçbir şekilde dış sunuculara aktarılmaz. SSL doğrulaması, captive portal ağının doğası (yönlendirme gereksinimleri) nedeniyle devre dışı bırakılmıştır.
+Kimlik bilgileriniz sadece kendi bilgisayarınızda saklanır. Kayıtlı profiller `user_config.json` içinde AES-GCM ile şifrelenir ve hiçbir dış sunucuya gönderilmez. GitHub sürüm kontrolü yalnızca release bilgisi almak için GitHub API'ye istek atar; kullanıcı adı, şifre veya profil bilgisi bu isteğe eklenmez.
+
+SSL doğrulaması, GSB captive portal akışının yönlendirme gereksinimleri nedeniyle portal istemcisinde devre dışıdır. GitHub sürüm kontrolü ise ayrı ve normal TLS doğrulamalı HTTP istemcisiyle yapılır.
 
 ---
 
 ## 🛠️ Geliştirme
 
-Projeyi kendi bilgisayarınızda derlemek veya geliştirmek isterseniz aşağıdaki adımları izleyebilirsiniz.
+Projeyi kendi bilgisayarınızda derlemek veya geliştirmek için:
 
 ### Gereksinimler
 
-- [Rust](https://rustup.rs/) *(stable sürüm)*
-- [Node.js](https://nodejs.org/) *(opsiyonel, frontend bağımlılıkları için)*
+- [Rust](https://rustup.rs/) stable sürüm
+- [Node.js](https://nodejs.org/) opsiyonel, frontend sözdizimi kontrolleri için
 - Windows 10 veya Windows 11
+- Tauri CLI (`cargo install tauri-cli --version "^2"` veya mevcut eşdeğer kurulum)
 
 ### Derleme Adımları
 
 ```powershell
 # Depoyu klonlayın
-git clone [https://github.com/Toxpox/GSB-WiFi-AutoLogin.git](https://github.com/Toxpox/GSB-WiFi-AutoLogin.git)
+git clone https://github.com/Toxpox/GSB-WiFi-AutoLogin.git
 
 # Proje dizinine geçin
 cd GSB-WiFi-AutoLogin/src-tauri
@@ -83,22 +94,37 @@ cargo tauri build
 
 📂 **Çıktı Yolları:**
 
-- **Installer (Kurulum dosyası):** `src-tauri/target/release/bundle/nsis/`
-- **Portable (.exe dosyası):** `src-tauri/target/release/`
+- **Installer:** `src-tauri/target/release/bundle/nsis/`
+- **Portable exe:** `src-tauri/target/release/`
+
+### Kontrol Komutları
+
+```powershell
+cd src-tauri
+cargo fmt --check
+cargo test
+cargo clippy -- -D warnings
+```
+
+Frontend sözdizimi için:
+
+```powershell
+node --check frontend/js/app.js
+node --check frontend/js/giris.js
+```
 
 ---
 
 ## 💻 Teknolojiler
 
-Bu projede kullanılan temel teknolojiler ve kullanım amaçları:
-
 | Teknoloji | Kullanım Alanı |
 |:---:|:---|
-| ![Rust](https://img.shields.io/badge/Rust-000000?style=flat&logo=rust&logoColor=white) | Backend mantığı, ağ işlemleri ve şifreleme |
-| ![Tauri v2](https://img.shields.io/badge/Tauri-FFC131?style=flat&logo=tauri&logoColor=white) | Modern masaüstü uygulama çerçevesi |
-| ![HTML/CSS/JS](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white) | Etkileşimli ve dinamik Frontend arayüzü |
-| **AES-GCM** | Endüstri standardı kullanıcı bilgisi şifreleme |
-| **reqwest** | Hızlı ve güvenilir HTTP istek/ağ işlemleri |
+| ![Rust](https://img.shields.io/badge/Rust-000000?style=flat&logo=rust&logoColor=white) | Backend mantığı, ağ akışı, profil yönetimi ve şifreleme |
+| ![Tauri v2](https://img.shields.io/badge/Tauri-FFC131?style=flat&logo=tauri&logoColor=white) | Windows masaüstü uygulama çerçevesi |
+| ![HTML/CSS/JS](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white) | Etkileşimli frontend arayüzü |
+| **AES-GCM** | Yerel kullanıcı bilgisi şifreleme |
+| **reqwest** | Captive portal, çıkış işlemi ve GitHub Releases API istekleri |
+| **GitHub Releases API** | Yeni sürüm kontrolü |
 
 ---
 
