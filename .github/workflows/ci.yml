@@ -70,6 +70,18 @@ jobs:
             throw "config.rs VERSION sabiti $version ile uyusmuyor."
           }
 
+          $frontendApp = Get-Content -Raw -Encoding UTF8 frontend/js/app.js
+          $frontendVersionLine = 'let VERSION = "' + $version + '";'
+          if ($frontendApp -notmatch [regex]::Escape($frontendVersionLine)) {
+            throw "frontend/js/app.js VERSION fallback degeri $version ile uyusmuyor."
+          }
+
+          $cargoLock = Get-Content -Raw -Encoding UTF8 src-tauri/Cargo.lock
+          $lockPattern = '(?ms)\[\[package\]\]\s+name = "gsb-wifi-autologin"\s+version = "' + [regex]::Escape($version) + '"'
+          if ($cargoLock -notmatch $lockPattern) {
+            throw "Cargo.lock proje paketi versiyonu $version ile uyusmuyor."
+          }
+
           $readme = Get-Content -Raw -Encoding UTF8 README.md
           if ($readme -notmatch [regex]::Escape("version-$version-blue")) {
             throw "README.md version rozeti $version ile uyusmuyor."

@@ -8,7 +8,7 @@ use tauri::State;
 use tokio::sync::Mutex;
 
 pub struct AppState {
-    pub client: Mutex<Client>,
+    pub client: Mutex<network::PortalClients>,
     pub giris_aktif: Mutex<bool>,
     pub son_html: Mutex<String>,
 }
@@ -95,7 +95,7 @@ pub async fn giris(
             let mut client = state.client.lock().await;
             *client = network::client_olustur()?;
         }
-        let client = state.client.lock().await.clone();
+        let client = state.client.lock().await.normal.clone();
 
         let ip = network::ip_bul(&url).await.ok();
         match network::giris_yap(&client, &url, &kullanici, &sifre).await {
@@ -127,8 +127,14 @@ pub async fn giris(
 
 #[tauri::command]
 pub async fn cikis(state: State<'_, AppState>) -> Result<bool, String> {
-    let client = state.client.lock().await.clone();
-    Ok(network::cikis_yap(&client).await)
+    let clients = state.client.lock().await.clone();
+    let basarili = network::cikis_yap(&clients)
+        .await
+        .map_err(|e: GSBError| -> String { e.into() })?;
+    if basarili {
+        *state.son_html.lock().await = String::new();
+    }
+    Ok(basarili)
 }
 
 #[tauri::command]
@@ -263,7 +269,7 @@ pub async fn maksimum_cihaz_isle(
     state: State<'_, AppState>,
 ) -> Result<GirisSonuc, String> {
     let html = state.son_html.lock().await.clone();
-    let mevcut_client = state.client.lock().await.clone();
+    let mevcut_client = state.client.lock().await.normal.clone();
 
     network::onceki_oturumu_kapat(&mevcut_client, &html, &url).await;
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
@@ -273,7 +279,7 @@ pub async fn maksimum_cihaz_isle(
         let mut client = state.client.lock().await;
         *client = network::client_olustur().map_err(|e: GSBError| -> String { e.into() })?;
     }
-    let yeni_client = state.client.lock().await.clone();
+    let yeni_client = state.client.lock().await.normal.clone();
 
     let yeni_html = match network::giris_yap(&yeni_client, &url, &kullanici, &sifre).await {
         Ok(html) => html,

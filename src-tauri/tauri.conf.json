@@ -1,6 +1,6 @@
 {
   "productName": "GSB WiFi AutoLogin",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "identifier": "com.toxpox.gsb-wifi-autologin",
   "build": {
     "frontendDist": "../frontend"

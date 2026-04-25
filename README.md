@@ -6,7 +6,7 @@
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin.svg?type=shield&issueType=license)](https://app.fossa.com/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin?ref=badge_shield&issueType=license)
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-1.6.0-blue.svg?cacheSeconds=2592000&style=for-the-badge" />
+  <img alt="Version" src="https://img.shields.io/badge/version-1.6.1-blue.svg?cacheSeconds=2592000&style=for-the-badge" />
   <a href="https://github.com/Toxpox/GSB-WiFi-AutoLogin/blob/main/LICENSE" target="_blank">
     <img alt="License: GPLv3" src="https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge" />
   </a>
@@ -35,6 +35,29 @@
 - 🔄 **Yeniden Deneme:** Ağ hatalarında exponential backoff ile kontrollü tekrar deneme.
 - 🧭 **GitHub Kısayolu:** Sağ üstteki GitHub butonu ile proje deposunu varsayılan tarayıcıda açma.
 - 🆕 **Sürüm Kontrolü:** Başarılı bağlantıdan sonra GitHub Releases üzerinden yeni sürüm denetimi.
+
+---
+
+## 🆕 1.6.0 ile Gelenler
+
+1.6.0 sürümü, `.old` klasöründeki 1.5.0 projesine göre özellikle hesap yönetimi ve güncelleme farkındalığına odaklanır.
+
+| Alan | 1.5.0 | 1.6.0 |
+|:---|:---|:---|
+| Hesap kaydı | Tek kullanıcı kaydı | Çoklu profil listesi, seçim ve silme |
+| Config formatı | Tek `username/password` kaydı | Geriye uyumlu çoklu profil formatı |
+| Config konumu | Eski sürümde exe yanı dosya yaklaşımı | Yerel app data/config dizini, eski dosya okuma fallback'i |
+| Kayıt hatası | Büyük ölçüde sessiz geçilebilir | Backend sonucu frontend'e taşınır ve log'a yazılır |
+| Güncelleme | Manuel Releases kontrolü | Bağlantı sonrası GitHub Releases API kontrolü |
+| GitHub erişimi | README linkleri | Uygulama içinde küçük GitHub butonu |
+| UI | Sadece kullanıcı/şifre formu | Profil paneli, şifre göster/gizle, kaydırılabilir giriş ekranı |
+| Test kapsamı | Daha dar birim testler | Profil migration, sürüm karşılaştırma ve güvenli GitHub URL testleri |
+
+### Değerlendirme
+
+1.6.0, 1.5.0'ın temel login akışını korurken kullanıcı deneyimini belirgin şekilde iyileştirir. En büyük kazanım, aynı bilgisayarı kullanan veya birden fazla hesabı yöneten kullanıcılar için profil sistemidir. GitHub sürüm kontrolü de kullanıcının eski installer ile uzun süre kalmasını azaltır.
+
+Bakım tarafında kod yüzeyi büyüdü; özellikle frontend global script düzeni hâlâ dosya yükleme sırasına bağlı. Buna rağmen yeni backend komutları küçük ve sınırları belli tutuldu. Dış bağlantı açma komutu yalnızca proje GitHub URL'leriyle sınırlandığı için güvenlik açısından kontrollü bir genişleme yapıldı.
 
 ---
 

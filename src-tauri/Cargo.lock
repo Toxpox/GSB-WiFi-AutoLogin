@@ -1291,7 +1291,7 @@ dependencies = [
 
 [[package]]
 name = "gsb-wifi-autologin"
-version = "1.6.0"
+version = "1.6.1"
 dependencies = [
  "aes-gcm",
  "base64 0.22.1",

@@ -1,20 +1,46 @@
 use crate::config::*;
 use crate::errors::*;
 use crate::parser;
-use reqwest::{Client, ClientBuilder};
+use reqwest::header::LOCATION;
+use reqwest::{cookie::Jar, redirect::Policy, Client, ClientBuilder};
+use std::sync::Arc;
 use std::time::Duration;
 
-pub fn client_olustur() -> Result<Client, GSBError> {
+#[derive(Clone)]
+pub struct PortalClients {
+    pub normal: Client,
+    pub no_redirect: Client,
+}
+
+pub fn client_olustur() -> Result<PortalClients, GSBError> {
+    let jar = Arc::new(Jar::default());
+    let normal = portal_client_builder(jar.clone())
+        .build()
+        .map_err(client_build_hatasi)?;
+    let no_redirect = portal_client_builder(jar)
+        .redirect(Policy::none())
+        .build()
+        .map_err(client_build_hatasi)?;
+
+    Ok(PortalClients {
+        normal,
+        no_redirect,
+    })
+}
+
+fn portal_client_builder(jar: Arc<Jar>) -> ClientBuilder {
     ClientBuilder::new()
         .danger_accept_invalid_certs(true)
         .timeout(Duration::from_secs(TIMEOUT_SECS))
-        .user_agent(USER_AGENT)
-        .cookie_store(true)
-        .build()
-        .map_err(|e| GSBError::AgHatasi {
-            mesaj: e.to_string(),
-            kullanici_mesaji: "HTTP istemcisi olusturulamadi".into(),
-        })
+        .user_agent(PORTAL_USER_AGENT)
+        .cookie_provider(jar)
+}
+
+fn client_build_hatasi(e: reqwest::Error) -> GSBError {
+    GSBError::AgHatasi {
+        mesaj: e.to_string(),
+        kullanici_mesaji: "HTTP istemcisi olusturulamadi".into(),
+    }
 }
 
 pub async fn ip_bul(url: &str) -> Result<String, GSBError> {
@@ -122,8 +148,97 @@ pub async fn giris_yap(
     }))
 }
 
-pub async fn cikis_yap(client: &Client) -> bool {
-    client.get(CIKIS_URL).send().await.is_ok()
+pub async fn cikis_yap(clients: &PortalClients) -> Result<bool, GSBError> {
+    let ilk_yanit = clients
+        .no_redirect
+        .get(LOGOUT_URL)
+        .headers(tarayici_navigasyon_basliklari(INDEX_URL))
+        .send()
+        .await
+        .map_err(|e| GSBError::AgHatasi {
+            mesaj: e.to_string(),
+            kullanici_mesaji:
+                "Cikis istegi gonderilemedi. GSB WiFi agina bagli oldugunuzdan emin olun.".into(),
+        })?;
+
+    if ilk_yanit.status().is_success() {
+        let status = ilk_yanit.status();
+        let final_url = ilk_yanit.url().to_string();
+        let body = ilk_yanit.text().await.map_err(|e| GSBError::AgHatasi {
+            mesaj: e.to_string(),
+            kullanici_mesaji: "Cikis yaniti okunamadi. Lutfen tekrar deneyin.".into(),
+        })?;
+        return Ok(status.is_success() && cikis_yaniti_basarili_mi(&body, &final_url));
+    }
+
+    if !ilk_yanit.status().is_redirection() {
+        return Ok(false);
+    }
+
+    let yonlendirme_url =
+        cikis_yonlendirme_url(&ilk_yanit).unwrap_or_else(|| CIKIS_SON_URL.to_string());
+
+    let son_yanit = clients
+        .no_redirect
+        .get(&yonlendirme_url)
+        .headers(tarayici_navigasyon_basliklari(INDEX_URL))
+        .send()
+        .await
+        .map_err(|e| GSBError::AgHatasi {
+            mesaj: e.to_string(),
+            kullanici_mesaji:
+                "Cikis sonucu alinamadi. GSB WiFi agina bagli oldugunuzdan emin olun.".into(),
+        })?;
+
+    let status = son_yanit.status();
+    let final_url = son_yanit.url().to_string();
+    let body = son_yanit.text().await.map_err(|e| GSBError::AgHatasi {
+        mesaj: e.to_string(),
+        kullanici_mesaji: "Cikis yaniti okunamadi. Lutfen tekrar deneyin.".into(),
+    })?;
+
+    Ok(status.is_success() && cikis_yaniti_basarili_mi(&body, &final_url))
+}
+
+fn tarayici_navigasyon_basliklari(referer: &str) -> reqwest::header::HeaderMap {
+    let mut headers = reqwest::header::HeaderMap::new();
+    headers.insert(
+        "Accept",
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
+            .parse()
+            .unwrap(),
+    );
+    headers.insert(
+        "Accept-Language",
+        "tr-TR,tr;q=0.9,en-GB;q=0.8,en;q=0.7,en-US;q=0.6"
+            .parse()
+            .unwrap(),
+    );
+    headers.insert("Referer", referer.parse().unwrap());
+    headers.insert("Sec-Fetch-Dest", "document".parse().unwrap());
+    headers.insert("Sec-Fetch-Mode", "navigate".parse().unwrap());
+    headers.insert("Sec-Fetch-Site", "same-origin".parse().unwrap());
+    headers.insert("Sec-Fetch-User", "?1".parse().unwrap());
+    headers.insert("Upgrade-Insecure-Requests", "1".parse().unwrap());
+    headers
+}
+
+fn cikis_yonlendirme_url(yanit: &reqwest::Response) -> Option<String> {
+    let location = yanit.headers().get(LOCATION)?.to_str().ok()?;
+    yanit.url().join(location).ok().map(|url| url.to_string())
+}
+
+fn cikis_yaniti_basarili_mi(body: &str, final_url: &str) -> bool {
+    let body_lower = body.to_lowercase();
+    let final_url_lower = final_url.to_lowercase();
+
+    body_lower.contains("j_spring_security_check")
+        || final_url_lower.contains("cikisson")
+        || body_lower.contains("basari ile")
+        || body_lower.contains("partial-response")
+            && body_lower.contains("redirect")
+            && (body_lower.contains("login") || body_lower.contains("cikisson"))
+        || final_url_lower.contains("login")
 }
 
 pub async fn onceki_oturumu_kapat(client: &Client, html: &str, login_url: &str) -> bool {

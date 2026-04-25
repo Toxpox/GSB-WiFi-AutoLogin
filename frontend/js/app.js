@@ -1,6 +1,6 @@
 const { invoke } = window.__TAURI__.core;
 
-let VERSION = "1.6.0";
+let VERSION = "1.6.1";
 let GIRIS_URL = "https://wifi.gsb.gov.tr/j_spring_security_check";
 let KAYITLI_PROFILLER = [];
 let SECILI_PROFIL_ID = null;

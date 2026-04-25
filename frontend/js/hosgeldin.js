@@ -61,15 +61,23 @@ document.addEventListener('DOMContentLoaded', function() {
         logYaz('');
         logYaz('━━━ Çıkış yapılıyor... ━━━', 'uyari');
 
+        var cikisTamam = false;
+
         try {
             var basarili = await invoke('cikis');
             if (basarili) {
+                cikisTamam = true;
                 logYaz('✓ Oturum sonlandırıldı', 'basarili');
             } else {
                 logYaz('⚠ Çıkış isteği gönderilemedi', 'uyari');
             }
         } catch (_) {
             logYaz('⚠ Çıkış isteği gönderilemedi', 'uyari');
+        }
+
+        if (!cikisTamam) {
+            durumGuncelle('Bağlı', 'basari');
+            return;
         }
 
         ekranGoster('ekran-giris');

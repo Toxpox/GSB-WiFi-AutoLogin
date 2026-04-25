@@ -1,4 +1,4 @@
-use scraper::{Html, Selector};
+use scraper::{ElementRef, Html, Selector};
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -260,23 +260,45 @@ mod tests {
 
 pub fn maksimum_form_bilgi_cek(html: &str) -> FormBilgi {
     let document = Html::parse_document(html);
-    let mut bilgi = FormBilgi::default();
 
     let form_sel = Selector::parse("#j_idt20_data tr form").unwrap();
     let Some(form) = document.select(&form_sel).next() else {
-        return bilgi;
+        return FormBilgi::default();
     };
 
-    bilgi.form_id = form.value().attr("id").unwrap_or("").to_string();
+    let mut bilgi = form_temel_bilgi_cek(&form);
 
     let btn_sel = Selector::parse("button[type=submit]").unwrap();
     if let Some(btn) = form.select(&btn_sel).next() {
-        bilgi.buton_id = btn.value().attr("id").unwrap_or("").to_string();
+        bilgi.buton_id = buton_kimligi(&btn);
     }
+    bilgi
+}
+
+fn form_temel_bilgi_cek(form: &ElementRef<'_>) -> FormBilgi {
+    let form_id = form
+        .value()
+        .attr("id")
+        .or_else(|| form.value().attr("name"))
+        .unwrap_or("")
+        .to_string();
+    let mut bilgi = FormBilgi {
+        form_id,
+        ..Default::default()
+    };
 
     let vs_sel = Selector::parse("input[name='javax.faces.ViewState']").unwrap();
     if let Some(vs) = form.select(&vs_sel).next() {
         bilgi.viewstate = vs.value().attr("value").unwrap_or("").to_string();
     }
+
     bilgi
+}
+
+fn buton_kimligi(btn: &ElementRef<'_>) -> String {
+    btn.value()
+        .attr("name")
+        .or_else(|| btn.value().attr("id"))
+        .unwrap_or("")
+        .to_string()
 }
