@@ -134,7 +134,7 @@ pub fn kullanici_kaydet(k: &str, sifre: &str) -> Result<(), GSBError> {
 
     depo.aktif_id = Some(id);
     depo.profiles
-        .sort_by(|a, b| b.son_kullanim.cmp(&a.son_kullanim));
+        .sort_by_key(|profil| std::cmp::Reverse(profil.son_kullanim));
     profil_deposu_yaz(&depo)
 }
 
