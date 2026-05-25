@@ -1,40 +1,65 @@
 :root {
-    --arkaplan:     #101418;
-    --kart:         #171c22;
-    --kart2:        #202832;
-    --input-bg:     #0b0f14;
-    --mor:          #2563eb;
-    --mor-hover:    #0891b2;
-    --mor-acik:     #67e8f9;
+    /* surfaces */
+    --arkaplan:     #0b0e13;
+    --arkaplan-2:   #0f131a;
+    --kart:         #141923;
+    --kart2:        #1c2330;
+    --input-bg:     #0f131a;
+    --cizgi:        #1c2330;
+    --cizgi-2:      #283246;
+
+    /* text */
+    --beyaz:        #eaf0f8;
+    --gri:          #9aa6b9;
+    --gri-koyu:     #5a6678;
+    --gri-soluk:    #3d4757;
+
+    /* accents */
+    --mor:          #3b82f6;
+    --mor-hover:    #60a5fa;
+    --mor-acik:     #60a5fa;
+    --mor-glow:     59, 130, 246;
+
+    /* status */
     --yesil:        #10b981;
-    --yesil-koyu:   #064e3b;
+    --yesil-acik:   #34d399;
+    --yesil-koyu:   rgba(16, 185, 129, 0.12);
     --sari:         #f59e0b;
-    --sari-koyu:    #78350f;
+    --sari-acik:    #fbbf24;
+    --sari-koyu:    rgba(245, 158, 11, 0.12);
     --kirmizi:      #ef4444;
-    --kirmizi-koyu: #7f1d1d;
-    --beyaz:        #f8fafc;
-    --gri:          #a1a1aa;
-    --gri-koyu:     #71717a;
-    --cizgi:        #2b3440;
-    --focus:        #38bdf8;
+    --kirmizi-acik: #f87171;
+    --kirmizi-koyu: rgba(239, 68, 68, 0.13);
+    --focus:        #60a5fa;
 
     --font:         'Segoe UI', system-ui, -apple-system, sans-serif;
     --font-mono:    'Cascadia Code', 'Consolas', monospace;
 
-    --radius:       8px;
-    --radius-sm:    6px;
-    --radius-lg:    8px;
+    --radius:       10px;
+    --radius-sm:    8px;
+    --radius-lg:    14px;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+    height: 100%;
+    width: 100%;
+}
 
 body {
     font-family: var(--font);
     background: var(--arkaplan);
     color: var(--beyaz);
+    font-size: 13px;
+    line-height: 1.4;
     overflow: hidden;
     user-select: none;
     -webkit-user-select: none;
-    height: 100vh;
-    width: 100vw;
+    letter-spacing: 0.1px;
+}
+
+svg {
+    flex: 0 0 auto;
+    display: block;
 }

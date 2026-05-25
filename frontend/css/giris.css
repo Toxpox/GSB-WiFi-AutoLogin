@@ -1,15 +1,14 @@
-/* Ekran gecisleri */
+/* ============ Screen container ============ */
 .ekran {
     position: absolute;
     inset: 0;
-    padding: 24px;
     display: flex;
     flex-direction: column;
     transition: opacity 0.35s ease, transform 0.35s ease;
 }
 .ekran.gizli {
     opacity: 0;
-    transform: translateX(30px);
+    transform: translateX(20px);
     pointer-events: none;
     display: flex !important;
     visibility: hidden;
@@ -21,241 +20,271 @@
 }
 
 #ekran-giris {
-    overflow-y: auto;
+    overflow: hidden;
 }
 
-.github-btn {
-    position: fixed;
-    top: 14px;
-    right: 14px;
-    z-index: 60;
-    height: 30px;
-    min-width: 62px;
-    border: 1px solid var(--cizgi);
-    border-radius: var(--radius-sm);
-    background: rgba(11, 15, 20, 0.88);
-    color: var(--gri);
-    font-family: var(--font);
-    font-size: 11px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+/* ============ Brand row ============ */
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 22px 0;
+    flex: 0 0 auto;
 }
-
-.github-btn:hover {
-    border-color: var(--focus);
-    background: var(--kart2);
-    color: var(--beyaz);
-}
-
-/* Ust alan */
-.ust-alan {
-    text-align: center;
-    margin-bottom: 20px;
-}
-
-.ikon-kutu {
-    width: 64px;
-    height: 64px;
-    border-radius: 10px;
-    background: var(--kart);
-    border: 1px solid var(--cizgi);
+.brand-mark {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, var(--mor), var(--mor-hover));
+    color: #fff;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 4px 12px -6px rgba(var(--mor-glow), 0.6);
 }
-.ikon-kutu img {
-    width: 40px;
-    height: 40px;
-}
-
-.ust-alan h1 {
-    font-size: 26px;
-    font-weight: 700;
-    margin-top: 12px;
+.brand-name {
+    flex: 1;
+    font-size: 13.5px;
+    font-weight: 600;
     color: var(--beyaz);
+    letter-spacing: 0.1px;
+}
+.brand-actions {
+    display: flex;
+    gap: 4px;
+    align-items: center;
 }
 
+/* legacy fixed github button — neutralized so it doesn't float over the brand row */
+.github-btn { display: none; }
+
+/* ============ Hero ============ */
+.ust-alan {
+    text-align: center;
+    padding: 30px 28px 22px;
+    flex: 0 0 auto;
+}
+.ikon-kutu {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(var(--mor-glow), 0.22), rgba(var(--mor-glow), 0.05));
+    border: 1px solid rgba(var(--mor-glow), 0.32);
+    color: var(--mor-hover);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+}
+.ust-alan h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--beyaz);
+    letter-spacing: -0.3px;
+    margin-bottom: 4px;
+}
 .alt-baslik {
     font-size: 12px;
     color: var(--gri-koyu);
-    margin-top: 2px;
+    letter-spacing: 0.3px;
 }
 
-/* Form karti */
+/* ============ Form ============ */
 .form-kart {
-    margin-bottom: 16px;
-}
-
-.kart-ic {
-    padding: 18px 18px;
+    padding: 0 28px;
     display: flex;
     flex-direction: column;
+    gap: 14px;
+    flex: 0 0 auto;
 }
-
+.alan {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
 .alan-label {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
-    color: var(--gri);
-    margin-bottom: 6px;
-}
-
-.kart-ic .giris-alani {
-    margin-bottom: 16px;
-}
-
-.kart-ic .giris-alani:last-of-type {
-    margin-bottom: 20px;
-}
-
-.profil-baslik-satiri,
-.alan-baslik-satiri {
+    color: var(--gri-koyu);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    min-height: 24px;
+    min-height: 18px;
+}
+.alan-eylem {
+    font-size: 11px;
+    color: var(--gri-koyu);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    text-transform: none;
+    font-weight: 500;
+    letter-spacing: 0;
+    font-family: var(--font);
+}
+.alan-eylem:hover { color: var(--gri); background: rgba(255,255,255,0.04); }
+.alan-eylem.aktif { color: var(--mor-hover); }
+
+/* ============ Profile tokens ============ */
+.profil-panel {
+    padding: 14px 22px 0;
+    flex: 0 0 auto;
+}
+.profil-listesi {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.profil-listesi::-webkit-scrollbar { display: none; }
+
+.profil-bos {
+    display: none;
 }
 
-.ikon-btn {
-    width: 28px;
-    height: 28px;
-    border: 1px solid var(--cizgi);
-    border-radius: var(--radius-sm);
-    background: var(--input-bg);
-    color: var(--gri);
+.token {
+    position: relative;
+    flex: 0 0 auto;
+}
+.token-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 32px;
+    padding: 0 4px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 999px;
     cursor: pointer;
     font-family: var(--font);
-    font-size: 14px;
+    color: var(--gri);
+    transition: background .2s, border-color .2s, color .2s, padding .2s;
+}
+.token-btn:hover { background: rgba(255,255,255,0.04); }
+.token-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: var(--kart2);
+    color: var(--gri);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    transition: background .2s, color .2s, box-shadow .2s;
+    flex: 0 0 auto;
 }
-
-.ikon-btn:hover,
-.ikon-btn.aktif {
-    border-color: var(--focus);
+.token-name {
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    font-variant-numeric: tabular-nums;
+    padding-right: 8px;
+    white-space: nowrap;
+}
+.token.aktif .token-btn {
+    background: rgba(var(--mor-glow), 0.10);
+    border-color: rgba(var(--mor-glow), 0.35);
     color: var(--beyaz);
+}
+.token.aktif .token-avatar {
+    background: linear-gradient(135deg, var(--mor), var(--mor-hover));
+    color: #fff;
+    box-shadow: 0 2px 8px -2px rgba(var(--mor-glow), 0.6);
+}
+.token-del {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    width: 14px;
+    height: 14px;
     background: var(--kart2);
-}
-
-.profil-panel {
-    margin-bottom: 14px;
-}
-
-.profil-listesi {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    max-height: 112px;
-    overflow-y: auto;
-}
-
-.profil-satir {
-    display: grid;
-    grid-template-columns: 1fr 32px;
-    gap: 8px;
-    min-height: 38px;
-}
-
-.profil-sec-btn,
-.profil-sil-btn {
-    border: 1px solid var(--cizgi);
-    border-radius: var(--radius-sm);
-    background: var(--input-bg);
+    border: 1.5px solid var(--arkaplan);
+    border-radius: 999px;
     color: var(--gri);
-    font-family: var(--font);
     cursor: pointer;
-    transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    opacity: 0;
+    transform: scale(0.7);
+    transition: opacity .15s, transform .15s, background .15s, color .15s;
+    pointer-events: none;
+}
+.token:hover .token-del {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}
+.token-del:hover {
+    background: var(--kirmizi);
+    color: #fff;
 }
 
-.profil-sec-btn {
-    min-width: 0;
-    padding: 0 10px;
+/* tiny refresh icon inside profile area */
+.profil-yenile-link {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    background: transparent;
+    border: 0;
+    color: var(--gri-koyu);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    transition: color .15s, background .15s;
+    flex: 0 0 auto;
+}
+.profil-yenile-link:hover {
+    color: var(--beyaz);
+    background: rgba(255,255,255,0.04);
+}
+
+/* ============ Connect zone ============ */
+.connect {
+    padding: 22px 28px 0;
+    flex: 0 0 auto;
+}
+
+/* ============ Footer ============ */
+.foot {
+    margin-top: auto;
+    padding: 14px 22px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    text-align: left;
-}
-
-.profil-ad {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.profil-aktif-etiket {
+    border-top: 1px solid var(--cizgi);
     flex: 0 0 auto;
-    border-radius: 999px;
-    background: rgba(16, 185, 129, 0.12);
-    color: var(--yesil);
-    font-size: 10px;
-    font-weight: 700;
-    padding: 3px 7px;
 }
-
-.profil-sil-btn {
-    font-size: 18px;
-    line-height: 1;
-}
-
-.profil-satir.aktif .profil-sec-btn,
-.profil-sec-btn:hover,
-.profil-sil-btn:hover {
-    border-color: var(--focus);
-    background: var(--kart2);
-    color: var(--beyaz);
-}
-
-.profil-sil-btn:hover {
-    border-color: var(--kirmizi);
-    color: var(--kirmizi);
-}
-
-.profil-bos {
-    min-height: 38px;
-    border: 1px dashed var(--cizgi);
-    border-radius: var(--radius-sm);
-    color: var(--gri-koyu);
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.kart-ic .durum-rozeti {
-    align-self: center;
-    margin-top: 16px;
-}
-
-/* Alt bilgiler */
 .ssl-uyari {
-    font-size: 10px;
-    color: var(--sari);
-    text-align: center;
-    margin-bottom: 4px;
-}
-
-.btn-log {
-    width: 100%;
-    height: 36px;
-    border: 1px solid var(--cizgi);
-    border-radius: var(--radius-sm);
-    background: var(--kart);
+    font-size: 10.5px;
     color: var(--gri-koyu);
-    font-family: var(--font);
-    font-size: 12px;
-    cursor: pointer;
-    transition: background 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 0.2px;
+    margin: 0;
 }
-.btn-log:hover { background: var(--kart2); }
-
-.egitim-uyari {
-    font-size: 11px;
-    color: var(--gri-koyu);
-    text-align: center;
-    margin-top: 16px;
+.ssl-uyari .nokta {
+    width: 4px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--sari);
+}
+.foot-actions {
+    display: flex;
+    gap: 2px;
 }

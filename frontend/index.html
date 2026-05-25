@@ -11,95 +11,175 @@
     <link rel="stylesheet" href="css/log.css">
 </head>
 <body>
-    <button id="github-btn" class="github-btn" type="button" title="GitHub" aria-label="GitHub deposunu aç">GitHub</button>
-
-    <!-- Giris Ekrani -->
+    <!-- ============ Login screen ============ -->
     <div id="ekran-giris" class="ekran aktif">
+        <div class="brand">
+            <span class="brand-mark">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12.5a10 10 0 0 1 14 0"/>
+                    <path d="M8.5 16a5 5 0 0 1 7 0"/>
+                    <circle cx="12" cy="19.5" r="0.8" fill="currentColor" stroke="none"/>
+                    <path d="M2 9a14 14 0 0 1 20 0" opacity="0.55"/>
+                </svg>
+            </span>
+            <span class="brand-name">GSB WiFi AutoLogin</span>
+            <div class="brand-actions">
+                <button class="ikon-link js-github-btn" type="button" title="GitHub" aria-label="GitHub deposunu aç">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.18-3.37-1.18-.46-1.16-1.12-1.47-1.12-1.47-.92-.63.07-.62.07-.62 1.02.07 1.55 1.05 1.55 1.05.9 1.55 2.37 1.1 2.95.84.09-.66.35-1.1.64-1.36-2.22-.25-4.56-1.11-4.56-4.95 0-1.1.39-1.99 1.03-2.69-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02a9.55 9.55 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.69 0 3.85-2.35 4.7-4.58 4.95.36.31.68.92.68 1.86v2.75c0 .26.18.58.69.48A10 10 0 0 0 12 2Z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
         <div class="ust-alan">
             <div class="ikon-kutu">
-                <img src="assets/wifi.png" width="40" height="40" alt="WiFi">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12.5a10 10 0 0 1 14 0"/>
+                    <path d="M8.5 16a5 5 0 0 1 7 0"/>
+                    <circle cx="12" cy="19.5" r="0.8" fill="currentColor" stroke="none"/>
+                    <path d="M2 9a14 14 0 0 1 20 0" opacity="0.55"/>
+                </svg>
             </div>
             <h1>GSB WiFi</h1>
-            <p class="alt-baslik">Otomatik Bağlantı Sistemi</p>
+            <p class="alt-baslik">GSB ağına tek tıkla bağlanın</p>
         </div>
 
-        <div class="kart form-kart">
-            <div class="kart-ic">
-                <div class="profil-baslik-satiri">
-                    <label class="alan-label">&#x1f465; Profiller</label>
-                    <button id="profil-yenile-btn" class="ikon-btn" type="button" title="Profilleri yenile" aria-label="Profilleri yenile">&#x21bb;</button>
+        <div class="form-kart">
+            <div class="alan">
+                <label class="alan-label" for="kullanici">Kullanıcı Adı</label>
+                <div class="input-wrap">
+                    <input id="kullanici" class="giris-alani" placeholder="TC Kimlik No" autocomplete="off">
                 </div>
-                <div id="profil-panel" class="profil-panel">
-                    <div id="profil-listesi" class="profil-listesi"></div>
-                    <p id="profil-bos" class="profil-bos">Kayıtlı profil yok</p>
+            </div>
+            <div class="alan">
+                <div class="alan-label">
+                    <span>Şifre</span>
+                    <button id="sifre-goster-btn" class="alan-eylem" type="button" title="Şifreyi göster" aria-label="Şifreyi göster">
+                        <svg class="ico-eye" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/>
+                            <circle cx="12" cy="12" r="2.6"/>
+                        </svg>
+                        <span class="sifre-goster-yazi">Göster</span>
+                    </button>
                 </div>
-
-                <label class="alan-label" for="kullanici">&#x1f464; Kullanıcı Adı</label>
-                <input id="kullanici" class="giris-alani" placeholder="TC Kimlik No" autocomplete="off">
-
-                <div class="alan-baslik-satiri">
-                    <label class="alan-label" for="sifre">&#x1f510; Şifre</label>
-                    <button id="sifre-goster-btn" class="ikon-btn" type="button" title="Şifreyi göster" aria-label="Şifreyi göster">&#x1f441;</button>
-                </div>
-                <input id="sifre" class="giris-alani" type="password" placeholder="••••••••" autocomplete="current-password">
-
-                <button id="giris-btn" class="btn-ana">Bağlan</button>
-
-                <div id="durum" class="durum-rozeti durum-bekle">
-                    <span class="nokta"></span>
-                    <span class="durum-yazi">Hazır</span>
+                <div class="input-wrap">
+                    <input id="sifre" class="giris-alani" type="password" placeholder="••••••••" autocomplete="current-password">
                 </div>
             </div>
         </div>
 
-        <p class="ssl-uyari">&#x1f513; SSL doğrulaması kapalı (captive portal gereksinimi)</p>
-        <button id="log-btn-giris" class="btn-log">&#x1f4cb; Sistem Günlüğü</button>
-        <p class="egitim-uyari">&#x26a0; Bu uygulama eğitim amaçlıdır.</p>
+        <div class="profil-panel">
+            <div id="profil-listesi" class="profil-listesi"></div>
+            <p id="profil-bos" class="profil-bos">Kayıtlı profil yok</p>
+        </div>
+
+        <div class="connect">
+            <button id="giris-btn" class="btn-ana" type="button">Bağlan</button>
+            <div id="durum" class="statusline">
+                <span class="statusline__dot"></span>
+                <span class="durum-yazi">Hazır</span>
+            </div>
+        </div>
+
+        <div class="foot">
+            <p class="ssl-uyari">
+                <span class="nokta"></span>
+                SSL kapalı · captive portal
+            </p>
+            <div class="foot-actions">
+                <button id="profil-yenile-btn" class="ikon-link" type="button" title="Profilleri yenile" aria-label="Profilleri yenile">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3.5 12a8.5 8.5 0 0 1 14.6-6"/>
+                        <path d="M18 3v4h-4"/>
+                        <path d="M20.5 12a8.5 8.5 0 0 1-14.6 6"/>
+                        <path d="M6 21v-4h4"/>
+                    </svg>
+                </button>
+                <button id="log-btn-giris" class="ikon-link" type="button" title="Sistem Günlüğü" aria-label="Sistem Günlüğü">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4.5" width="18" height="15" rx="2.2"/>
+                        <path d="M7 10l3 2-3 2"/>
+                        <path d="M12.5 14.5h5"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
     </div>
 
-    <!-- Hosgeldin Ekrani -->
+    <!-- ============ Connected screen ============ -->
     <div id="ekran-hosgeldin" class="ekran gizli">
-        <div class="scroll-alan">
+        <div class="brand">
+            <span class="brand-mark">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12.5a10 10 0 0 1 14 0"/>
+                    <path d="M8.5 16a5 5 0 0 1 7 0"/>
+                    <circle cx="12" cy="19.5" r="0.8" fill="currentColor" stroke="none"/>
+                    <path d="M2 9a14 14 0 0 1 20 0" opacity="0.55"/>
+                </svg>
+            </span>
+            <span class="brand-name">GSB WiFi AutoLogin</span>
+            <div class="brand-actions">
+                <button class="ikon-link js-github-btn" type="button" title="GitHub" aria-label="GitHub deposunu aç">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.18-3.37-1.18-.46-1.16-1.12-1.47-1.12-1.47-.92-.63.07-.62.07-.62 1.02.07 1.55 1.05 1.55 1.05.9 1.55 2.37 1.1 2.95.84.09-.66.35-1.1.64-1.36-2.22-.25-4.56-1.11-4.56-4.95 0-1.1.39-1.99 1.03-2.69-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02a9.55 9.55 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.69 0 3.85-2.35 4.7-4.58 4.95.36.31.68.92.68 1.86v2.75c0 .26.18.58.69.48A10 10 0 0 0 12 2Z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="connected-hero">
             <div class="basari-ikon">
-                <span>&#x2713;</span>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 12.5l5 5L20 6.5"/>
+                </svg>
             </div>
-            <h1>Hoş Geldiniz!</h1>
+            <div class="welcome-lbl">Bağlantı Aktif</div>
             <p id="isim-lbl" class="isim"></p>
+        </div>
 
-            <div class="durum-rozeti durum-basari baglanti-rozet">
-                <span class="nokta"></span>
-                <span> Bağlantı Aktif</span>
+        <!-- Kota karti — focal panel -->
+        <div id="kota-kart" class="gizli">
+            <div class="kota-baslik-satiri">
+                <span class="kota-baslik">Aylık Kota</span>
+                <span id="kota-yenilenme" class="kota-yenilenme"></span>
             </div>
+            <div class="kota-buyuk">
+                <span id="kota-yuzde-buyuk" class="kota-yuzde-buyuk">0%</span>
+                <span class="kota-buyuk-etk">kalan</span>
+            </div>
+            <div class="kota-bar-dis">
+                <div id="kota-bar" class="kota-bar-ic"></div>
+            </div>
+            <p id="kota-detay" class="kota-detay"></p>
+            <p id="kota-yuzde" class="kota-yuzde"></p>
+        </div>
 
-            <!-- Kullanici bilgi karti -->
-            <div id="bilgi-kart" class="kart gizli">
-                <div class="kart-ic">
-                    <h3>&#x1f464; Kullanıcı Bilgileri</h3>
-                    <p id="son-giris" class="bilgi-satir"></p>
-                    <p id="konum-bilgi" class="bilgi-satir"></p>
-                </div>
-            </div>
-
-            <!-- Kota karti -->
-            <div id="kota-kart" class="kart gizli">
-                <div class="kart-ic">
-                    <h3>&#x1f4ca; Kota Bilgileri</h3>
-                    <div class="kota-bar-dis">
-                        <div id="kota-bar" class="kota-bar-ic"></div>
-                    </div>
-                    <p id="kota-yuzde" class="kota-yuzde"></p>
-                    <p id="kota-detay" class="kota-detay"></p>
-                </div>
-            </div>
+        <!-- Kullanici bilgi satirlari -->
+        <div id="bilgi-kart" class="gizli">
+            <p id="konum-bilgi" class="bilgi-satir"></p>
+            <p id="son-giris" class="bilgi-satir"></p>
         </div>
 
         <div class="alt-butonlar">
-            <button id="log-btn-hosgeldin" class="btn-log">&#x1f4cb; Sistem Günlüğü</button>
-            <button id="cikis-btn" class="btn-ikinci">Çıkış Yap</button>
+            <button id="log-btn-hosgeldin" class="ikon-link" type="button" title="Sistem Günlüğü" aria-label="Sistem Günlüğü">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4.5" width="18" height="15" rx="2.2"/>
+                    <path d="M7 10l3 2-3 2"/>
+                    <path d="M12.5 14.5h5"/>
+                </svg>
+            </button>
+            <button id="cikis-btn" class="btn-ikinci" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 3v9"/>
+                    <path d="M7.5 6.5a7 7 0 1 0 9 0"/>
+                </svg>
+                Çıkış Yap
+            </button>
         </div>
     </div>
 
-    <!-- Modal Dialog -->
+    <!-- ============ Modal Dialog ============ -->
     <div id="modal-overlay" class="modal-overlay gizli">
         <div class="modal-kutu">
             <div id="modal-ikon" class="modal-ikon"></div>
@@ -109,13 +189,20 @@
         </div>
     </div>
 
-    <!-- Log Panel (overlay) -->
+    <!-- ============ Log Panel (bottom sheet) ============ -->
     <div id="log-panel" class="log-panel">
         <div class="log-baslik">
-            <span>&#x1f4cb; Sistem Günlüğü</span>
+            <span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4.5" width="18" height="15" rx="2.2"/>
+                    <path d="M7 10l3 2-3 2"/>
+                    <path d="M12.5 14.5h5"/>
+                </svg>
+                Sistem Günlüğü
+            </span>
             <div class="log-butonlar">
-                <button id="log-temizle" class="btn-log-kucuk">Temizle</button>
-                <button id="log-kapat" class="btn-log-kucuk">Kapat</button>
+                <button id="log-temizle" class="btn-log-kucuk" type="button">Temizle</button>
+                <button id="log-kapat" class="btn-log-kucuk" type="button">Kapat</button>
             </div>
         </div>
         <div id="log-icerik" class="log-icerik"></div>

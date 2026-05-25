@@ -1,87 +1,172 @@
 #ekran-hosgeldin {
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
-.scroll-alan {
-    flex: 1;
-    overflow-y: auto;
+/* ============ Connected hero ============ */
+.connected-hero {
+    padding: 24px 28px 14px;
     text-align: center;
-    padding-bottom: 10px;
+    flex: 0 0 auto;
 }
-
 .basari-ikon {
-    width: 70px;
-    height: 70px;
-    border-radius: 35px;
-    background: var(--yesil-koyu);
-    border: 3px solid var(--yesil);
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--yesil), var(--yesil-acik));
+    color: #062a1e;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    margin-top: 10px;
+    margin-bottom: 12px;
+    box-shadow: 0 10px 20px -10px rgba(16, 185, 129, 0.6);
 }
 .basari-ikon span {
-    font-size: 36px;
-    font-weight: bold;
-    color: var(--yesil);
+    /* legacy fallback if check char is used; SVG fills the disc instead */
+    display: none;
 }
-
-#ekran-hosgeldin h1 {
-    font-size: 26px;
+.welcome-lbl {
+    font-size: 11px;
+    color: var(--gri-koyu);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+.isim {
+    font-size: 20px;
     font-weight: 700;
     color: var(--beyaz);
-    margin-top: 14px;
-    margin-bottom: 4px;
+    letter-spacing: -0.2px;
+    margin: 0;
+}
+/* hide legacy h1 and badge in connected screen */
+#ekran-hosgeldin h1,
+.baglanti-rozet {
+    display: none;
 }
 
-.isim {
-    font-size: 16px;
-    color: var(--mor-acik);
+/* ============ Quota card (focal) ============ */
+#kota-kart {
+    margin: 0 24px;
+    padding: 18px 20px 16px;
+    background: var(--arkaplan-2);
+    border: 1px solid var(--cizgi);
+    border-radius: var(--radius-lg);
+    flex: 0 0 auto;
+}
+.kota-baslik-satiri {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
     margin-bottom: 12px;
 }
-
-.baglanti-rozet {
-    margin-bottom: 16px;
-}
-
-/* Bilgi karti */
-#bilgi-kart, #kota-kart {
-    text-align: left;
-    margin-top: 10px;
-}
-
-#bilgi-kart h3, #kota-kart h3 {
-    font-size: 13px;
+.kota-baslik {
+    font-size: 11px;
     font-weight: 600;
-    color: var(--gri);
-    margin-bottom: 8px;
+    color: var(--gri-koyu);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
-
-.bilgi-satir {
-    font-size: 13px;
-    color: var(--beyaz);
-    margin-top: 4px;
+.kota-yenilenme {
+    font-size: 11px;
+    color: var(--gri-koyu);
 }
-
-.kota-yuzde {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--beyaz);
-    margin-top: 6px;
+.kota-buyuk {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 10px;
 }
-
-.kota-detay {
+.kota-yuzde-buyuk {
+    font-size: 38px;
+    font-weight: 700;
+    letter-spacing: -1.5px;
+    line-height: 1;
+    color: var(--yesil-acik);
+}
+.kota-yuzde-buyuk.tip-ok   { color: var(--yesil-acik); }
+.kota-yuzde-buyuk.tip-warn { color: var(--sari-acik); }
+.kota-yuzde-buyuk.tip-low  { color: var(--kirmizi-acik); }
+.kota-buyuk-etk {
     font-size: 12px;
-    color: var(--gri);
-    margin-top: 4px;
-    white-space: pre-line;
+    color: var(--gri-koyu);
 }
+.kota-bar-dis {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+.kota-bar-ic {
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    transition: width .9s ease-out, background .5s ease;
+}
+.kota-detay {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11.5px;
+    color: var(--gri-koyu);
+    margin: 0;
+    white-space: normal;
+}
+.kota-detay strong {
+    color: var(--gri);
+    font-weight: 600;
+}
+/* legacy single-line percent — now superseded by .kota-yuzde-buyuk */
+.kota-yuzde { display: none; }
 
-/* Alt butonlar */
-.alt-butonlar {
-    padding-top: 10px;
+/* ============ User info rows (no card) ============ */
+#bilgi-kart {
+    margin: 16px 28px 0;
     display: flex;
     flex-direction: column;
     gap: 8px;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+    flex: 0 0 auto;
+}
+#bilgi-kart h3 {
+    display: none;
+}
+.bilgi-satir {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--gri);
+    margin: 0;
+}
+.bilgi-satir svg { color: var(--gri-koyu); }
+.bilgi-satir .lbl {
+    color: var(--gri-koyu);
+    flex: 0 0 auto;
+}
+.bilgi-satir .val {
+    color: var(--beyaz);
+    margin-left: auto;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+/* ============ Connected footer ============ */
+.alt-butonlar {
+    margin-top: auto;
+    padding: 14px 22px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-top: 1px solid var(--cizgi);
+    flex: 0 0 auto;
 }

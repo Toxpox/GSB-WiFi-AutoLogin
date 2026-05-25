@@ -1,5 +1,13 @@
 let girisAktif = false;
 
+const BAGLAN_YAZI = 'Bağlan';
+const BAGLANIYOR_YAZI = '<span class="spinner"></span> Bağlanıyor…';
+
+function girisBtnYukleniyor(btn, yukleniyor) {
+    btn.disabled = !!yukleniyor;
+    btn.innerHTML = yukleniyor ? BAGLANIYOR_YAZI : BAGLAN_YAZI;
+}
+
 async function girisBaslat() {
     if (girisAktif) return;
 
@@ -13,15 +21,12 @@ async function girisBaslat() {
 
     girisAktif = true;
     const btn = document.getElementById('giris-btn');
-    btn.disabled = true;
-    btn.textContent = 'Bağlanıyor...';
-    durumGuncelle('Bağlanıyor...', 'yukle');
+    girisBtnYukleniyor(btn, true);
+    durumGuncelle('Bağlanıyor…', 'yukle');
 
     try {
         const tc = await invoke('tc_maskele', { tc: kullanici });
-        logYaz('');
-        logYaz('━━━ Giriş başlatılıyor ━━━', 'bilgi');
-        logYaz('  Kullanıcı: ' + tc, 'soluk');
+        logYaz('Giriş başlatıldı (' + tc + ')', 'bilgi');
     } catch (_) {}
 
     try {
@@ -31,8 +36,8 @@ async function girisBaslat() {
             sifre: sifre,
         });
 
-        logYaz('✓ Bağlantı başarılı!', 'basarili');
-        logYaz('  Kullanıcı: ' + sonuc.bilgi.isim, 'soluk');
+        logYaz('Bağlantı başarılı', 'basarili');
+        if (sonuc.bilgi && sonuc.bilgi.isim) logYaz('  Kullanıcı: ' + sonuc.bilgi.isim, 'soluk');
         if (sonuc.ip) logYaz('  Sunucu: ' + sonuc.ip, 'soluk');
         if (sonuc.kayit_hatasi) {
             logYaz('Kayıt uyarısı: ' + sonuc.kayit_hatasi, 'uyari');
@@ -40,7 +45,7 @@ async function girisBaslat() {
             await profilleriYukle({ sessiz: true });
         }
 
-        const kota = sonuc.bilgi.kota || {};
+        const kota = (sonuc.bilgi && sonuc.bilgi.kota) || {};
         if (kota.kalan_mb && kota.toplam_mb) {
             try {
                 const kalanGb = (parseFloat(kota.kalan_mb) / 1024).toFixed(1);
@@ -48,7 +53,7 @@ async function girisBaslat() {
                 logYaz('  Kota: ' + kalanGb + ' / ' + toplamGb + ' GB', 'soluk');
             } catch (_) {}
         }
-        if (sonuc.bilgi.konum) logYaz('  Konum: ' + sonuc.bilgi.konum, 'soluk');
+        if (sonuc.bilgi && sonuc.bilgi.konum) logYaz('  Konum: ' + sonuc.bilgi.konum, 'soluk');
 
         durumGuncelle('Bağlı', 'basari');
         setTimeout(function() {
@@ -61,14 +66,13 @@ async function girisBaslat() {
             const hata = JSON.parse(hataJson);
             await hataIsle(hata, kullanici, sifre);
         } catch (_) {
-            logYaz('✗ Hata: ' + hataJson, 'hata');
+            logYaz('Hata: ' + hataJson, 'hata');
             durumGuncelle('Hata', 'hata');
             await modalUyari('Hata', String(hataJson));
         }
     } finally {
         girisAktif = false;
-        btn.disabled = false;
-        btn.textContent = 'Bağlan';
+        girisBtnYukleniyor(btn, false);
     }
 }
 
@@ -78,18 +82,18 @@ async function hataIsle(hata, kullanici, sifre) {
             await maksimumCihazSor(hata.detay.cihaz_bilgisi, kullanici, sifre);
             break;
         case 'GirisBasarisiz':
-            logYaz('✗ ' + hata.detay.kullanici_mesaji, 'hata');
+            logYaz(hata.detay.kullanici_mesaji, 'hata');
             durumGuncelle('Giriş Başarısız', 'hata');
             await modalUyari('Giriş Başarısız', hata.detay.kullanici_mesaji);
             break;
         case 'ZamanAsimi':
-            logYaz('✗ Sunucu yanıtlamıyor', 'hata');
+            logYaz('Sunucu yanıtlamıyor', 'hata');
             durumGuncelle('Hata', 'hata');
             await modalUyari('Zaman Aşımı', 'Sunucu yanıtlamıyor. Ağ yoğunluğu nedeniyle gecikmeli olabilir.');
             break;
         default:
             var mesaj = (hata.detay && hata.detay.kullanici_mesaji) || 'Bilinmeyen hata';
-            logYaz('✗ ' + mesaj, 'hata');
+            logYaz(mesaj, 'hata');
             durumGuncelle('Hata', 'hata');
             await modalUyari('Hata', mesaj);
     }
@@ -108,12 +112,11 @@ async function maksimumCihazSor(bilgi, kullanici, sifre) {
         return;
     }
 
-    durumGuncelle('Önceki oturum kapatılıyor...', 'yukle');
-    logYaz('↻ Önceki cihazın bağlantısı kapatılıyor...', 'uyari');
+    durumGuncelle('Önceki oturum kapatılıyor…', 'yukle');
+    logYaz('Önceki cihazın bağlantısı kapatılıyor…', 'uyari');
 
     var btn = document.getElementById('giris-btn');
-    btn.disabled = true;
-    btn.textContent = 'Bağlanıyor...';
+    girisBtnYukleniyor(btn, true);
 
     try {
         var sonuc = await invoke('maksimum_cihaz_isle', {
@@ -121,7 +124,7 @@ async function maksimumCihazSor(bilgi, kullanici, sifre) {
             kullanici: kullanici,
             sifre: sifre,
         });
-        logYaz('✓ Bağlantı başarılı!', 'basarili');
+        logYaz('Bağlantı başarılı', 'basarili');
         durumGuncelle('Bağlı', 'basari');
         if (sonuc.kayit_hatasi) {
             logYaz('Kayıt uyarısı: ' + sonuc.kayit_hatasi, 'uyari');
@@ -131,16 +134,14 @@ async function maksimumCihazSor(bilgi, kullanici, sifre) {
         hosgeldinGoster(sonuc.bilgi);
         yeniVersiyonKontrolEt();
     } catch (e) {
-        logYaz('✗ Önceki cihaz bağlantısı düşürülemedi', 'hata');
+        logYaz('Önceki cihaz bağlantısı düşürülemedi', 'hata');
         durumGuncelle('Hata', 'hata');
         await modalUyari('Hata', 'Önceki cihazın bağlantısı düşürülemedi. Lütfen cihazdan manuel çıkış yapın.');
     } finally {
-        btn.disabled = false;
-        btn.textContent = 'Bağlan';
+        girisBtnYukleniyor(btn, false);
     }
 }
 
-// Event listeners
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('giris-btn').addEventListener('click', girisBaslat);
     document.getElementById('sifre').addEventListener('keydown', function(e) {

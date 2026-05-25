@@ -1,10 +1,26 @@
 const { invoke } = window.__TAURI__.core;
 
-let VERSION = "1.6.1";
+let VERSION = "1.7.0";
 let GIRIS_URL = "https://wifi.gsb.gov.tr/j_spring_security_check";
 let KAYITLI_PROFILLER = [];
 let SECILI_PROFIL_ID = null;
 let VERSIYON_KONTROL_EDILDI = false;
+
+// --- Inline SVG snippets used by JS-rendered nodes ---
+const SVG = {
+    close: '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg>',
+    eye: '<path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.6"/>',
+    eyeOff: '<path d="M3 3l18 18"/><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c6 0 9.5 6 9.5 6a16.6 16.6 0 0 1-3.3 3.9"/><path d="M6.1 7.4A16.4 16.4 0 0 0 2.5 12s3.5 6 9.5 6a9.6 9.6 0 0 0 4.2-1"/><path d="M9.5 9.7a3 3 0 0 0 4.2 4.2"/>',
+    pin: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12Z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
+    clock: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>',
+    modalIkon: {
+        hata:    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg>',
+        uyari:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 22 20H2L12 3.5Z"/><path d="M12 10v5"/><circle cx="12" cy="17.5" r="0.8" fill="currentColor" stroke="none"/></svg>',
+        bilgi:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><circle cx="12" cy="7.8" r="0.8" fill="currentColor" stroke="none"/></svg>',
+        soru:    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.3a3 3 0 1 1 4.4 2.6c-1.1.6-1.6 1.2-1.6 2.5"/><circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/></svg>',
+        basari:  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>',
+    }
+};
 
 // Ekran yonetimi
 function ekranGoster(id) {
@@ -13,21 +29,21 @@ function ekranGoster(id) {
         e.classList.add('gizli');
     });
     const hedef = document.getElementById(id);
-    // Animasyon icin kisa gecikme
     requestAnimationFrame(() => {
         hedef.classList.remove('gizli');
         hedef.classList.add('aktif');
     });
 }
 
-// Durum rozeti guncelle
+// Durum cizgisi (login ekrani altinda)
 function durumGuncelle(metin, tip) {
-    const rozet = document.getElementById('durum');
-    rozet.className = 'durum-rozeti durum-' + tip;
-    rozet.querySelector('.durum-yazi').textContent = metin;
+    const cizgi = document.getElementById('durum');
+    if (!cizgi) return;
+    cizgi.className = 'statusline durum-' + (tip || 'bekle');
+    const yazi = cizgi.querySelector('.durum-yazi');
+    if (yazi) yazi.textContent = metin;
 }
 
-// Baslangicta kayitli kullanici yukle
 async function baslatmaYukle() {
     try {
         const appBilgisi = await invoke('app_bilgisi');
@@ -37,10 +53,8 @@ async function baslatmaYukle() {
 
     await profilleriYukle({ sessiz: true });
 
-    logYaz("┌───────────────────────────┐", "bilgi");
-    logYaz("│  GSB WiFi AutoLogin v" + VERSION + "          │", "bilgi");
-    logYaz("└───────────────────────────┘", "bilgi");
-    logYaz("");
+    logYaz("GSB WiFi AutoLogin v" + VERSION, "bilgi");
+    logYaz("Hazır.", "soluk");
 }
 
 async function profilleriYukle(secenekler) {
@@ -69,6 +83,12 @@ async function profilleriYukle(secenekler) {
     }
 }
 
+function profilBasHarfleri(label) {
+    if (!label) return '??';
+    var m = String(label).match(/^\d+/);
+    return (m ? m[0] : String(label).replace(/\W/g, '')).slice(0, 2).toUpperCase() || '??';
+}
+
 function profilListesiniCiz() {
     const liste = document.getElementById('profil-listesi');
     const bos = document.getElementById('profil-bos');
@@ -77,43 +97,46 @@ function profilListesiniCiz() {
     liste.textContent = '';
     bos.classList.toggle('gizli', KAYITLI_PROFILLER.length > 0);
 
+    const panel = liste.closest('.profil-panel');
+    if (panel) panel.classList.toggle('gizli', KAYITLI_PROFILLER.length === 0);
+
     KAYITLI_PROFILLER.forEach(function(profil) {
-        const satir = document.createElement('div');
-        satir.className = 'profil-satir' + (profil.id === SECILI_PROFIL_ID || profil.aktif ? ' aktif' : '');
+        const aktif = profil.id === SECILI_PROFIL_ID || profil.aktif;
+        const token = document.createElement('div');
+        token.className = 'token' + (aktif ? ' aktif' : '');
 
-        const secBtn = document.createElement('button');
-        secBtn.type = 'button';
-        secBtn.className = 'profil-sec-btn';
-        secBtn.title = profil.masked_username || 'Profil';
-        secBtn.addEventListener('click', function() {
-            profilSec(profil.id);
-        });
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'token-btn';
+        btn.title = profil.masked_username || 'Profil';
+        btn.addEventListener('click', function() { profilSec(profil.id); });
 
-        const ad = document.createElement('span');
-        ad.className = 'profil-ad';
-        ad.textContent = profil.masked_username || 'Profil';
-        secBtn.appendChild(ad);
+        const avatar = document.createElement('span');
+        avatar.className = 'token-avatar';
+        avatar.textContent = profilBasHarfleri(profil.masked_username);
+        btn.appendChild(avatar);
 
-        if (profil.id === SECILI_PROFIL_ID || profil.aktif) {
-            const aktif = document.createElement('span');
-            aktif.className = 'profil-aktif-etiket';
-            aktif.textContent = 'Aktif';
-            secBtn.appendChild(aktif);
+        if (aktif) {
+            const name = document.createElement('span');
+            name.className = 'token-name';
+            name.textContent = profil.masked_username || 'Profil';
+            btn.appendChild(name);
         }
 
-        const silBtn = document.createElement('button');
-        silBtn.type = 'button';
-        silBtn.className = 'profil-sil-btn';
-        silBtn.title = 'Profili sil';
-        silBtn.setAttribute('aria-label', 'Profili sil');
-        silBtn.textContent = '\u00d7';
-        silBtn.addEventListener('click', function() {
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'token-del';
+        del.title = 'Profili sil';
+        del.setAttribute('aria-label', 'Profili sil');
+        del.innerHTML = SVG.close;
+        del.addEventListener('click', function(e) {
+            e.stopPropagation();
             profilSil(profil.id, profil.masked_username || 'Profil');
         });
 
-        satir.appendChild(secBtn);
-        satir.appendChild(silBtn);
-        liste.appendChild(satir);
+        token.appendChild(btn);
+        token.appendChild(del);
+        liste.appendChild(token);
     });
 }
 
@@ -124,9 +147,7 @@ async function profilSec(id, secenekler) {
         SECILI_PROFIL_ID = id;
         document.getElementById('kullanici').value = kullanici || '';
         document.getElementById('sifre').value = sifre || '';
-        KAYITLI_PROFILLER.forEach(function(p) {
-            p.aktif = p.id === id;
-        });
+        KAYITLI_PROFILLER.forEach(function(p) { p.aktif = p.id === id; });
         profilListesiniCiz();
         if (!opts.sessiz) {
             const profil = KAYITLI_PROFILLER.find(function(p) { return p.id === id; });
@@ -165,20 +186,22 @@ async function profilSil(id, ad) {
 function profilSeciminiTemizle() {
     if (!SECILI_PROFIL_ID) return;
     SECILI_PROFIL_ID = null;
-    KAYITLI_PROFILLER.forEach(function(p) {
-        p.aktif = false;
-    });
+    KAYITLI_PROFILLER.forEach(function(p) { p.aktif = false; });
     profilListesiniCiz();
 }
 
 function sifreGorunurlukDegistir() {
     const sifre = document.getElementById('sifre');
     const btn = document.getElementById('sifre-goster-btn');
-    const gorunur = sifre.type === 'text';
-    sifre.type = gorunur ? 'password' : 'text';
-    btn.title = gorunur ? 'Şifreyi göster' : 'Şifreyi gizle';
+    const yazi = btn.querySelector('.sifre-goster-yazi');
+    const svg = btn.querySelector('.ico-eye');
+    const wasVisible = sifre.type === 'text';
+    sifre.type = wasVisible ? 'password' : 'text';
+    btn.title = wasVisible ? 'Şifreyi göster' : 'Şifreyi gizle';
     btn.setAttribute('aria-label', btn.title);
-    btn.classList.toggle('aktif', !gorunur);
+    btn.classList.toggle('aktif', !wasVisible);
+    if (yazi) yazi.textContent = wasVisible ? 'Göster' : 'Gizle';
+    if (svg) svg.innerHTML = wasVisible ? SVG.eye : SVG.eyeOff;
 }
 
 async function githubAc() {
@@ -196,9 +219,7 @@ async function yeniVersiyonKontrolEt() {
 
     try {
         const sonuc = await invoke('yeni_versiyon_kontrol');
-        if (sonuc.guncel || !sonuc.release_url) {
-            return;
-        }
+        if (sonuc.guncel || !sonuc.release_url) return;
 
         const son = sonuc.son || 'yeni sürüm';
         logYaz('Yeni sürüm mevcut: ' + son, 'uyari');
@@ -214,7 +235,7 @@ async function yeniVersiyonKontrolEt() {
     }
 }
 
-// --- Modal Dialog Sistemi ---
+// --- Modal Dialog ---
 function modalGoster(baslik, mesaj, tip, butonlar) {
     var overlay = document.getElementById('modal-overlay');
     var ikonEl = document.getElementById('modal-ikon');
@@ -222,19 +243,11 @@ function modalGoster(baslik, mesaj, tip, butonlar) {
     var mesajEl = document.getElementById('modal-mesaj');
     var btnAlani = document.getElementById('modal-butonlar');
 
-    // Ikon
-    var ikonlar = {
-        hata: '\u26D4',
-        uyari: '\u26A0\uFE0F',
-        bilgi: '\u2139\uFE0F',
-        soru: '\u2753',
-        basari: '\u2705'
-    };
-    ikonEl.textContent = ikonlar[tip] || ikonlar.bilgi;
+    ikonEl.className = 'modal-ikon tip-' + (tip || 'bilgi');
+    ikonEl.innerHTML = SVG.modalIkon[tip] || SVG.modalIkon.bilgi;
     baslikEl.textContent = baslik;
     mesajEl.textContent = mesaj;
 
-    // Butonlar
     btnAlani.textContent = '';
     return new Promise(function(resolve) {
         butonlar.forEach(function(btn) {
@@ -270,9 +283,10 @@ function modalBilgi(baslik, mesaj) {
     ]);
 }
 
-// Sayfa yuklendikten sonra baslat
 document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('github-btn').addEventListener('click', githubAc);
+    document.querySelectorAll('.js-github-btn').forEach(function(btn) {
+        btn.addEventListener('click', githubAc);
+    });
     document.getElementById('profil-yenile-btn').addEventListener('click', function() {
         profilleriYukle({ sessiz: false });
     });
