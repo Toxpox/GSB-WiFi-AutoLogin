@@ -6,7 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::errors::GSBError;
 
 #[allow(dead_code)]
-pub const VERSION: &str = "1.6.1";
+pub const VERSION: &str = "1.7.0";
 #[allow(dead_code)]
 pub const GIRIS_URL: &str = "https://wifi.gsb.gov.tr/j_spring_security_check";
 pub const GITHUB_URL: &str = "https://github.com/Toxpox/GSB-WiFi-AutoLogin";
@@ -19,7 +19,7 @@ pub const TIMEOUT_SECS: u64 = 15;
 pub const MAX_DENEME: u32 = 3;
 pub const BACKOFF_TABANI: f64 = 2.0;
 pub const BACKOFF_CARPAN: f64 = 3.0;
-pub const USER_AGENT: &str = concat!("GSB-WiFi-AutoLogin/", "1.6.1");
+pub const USER_AGENT: &str = concat!("GSB-WiFi-AutoLogin/", "1.7.0");
 pub const PORTAL_USER_AGENT: &str =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36";
 
