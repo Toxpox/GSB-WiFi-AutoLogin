@@ -6,7 +6,7 @@
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin.svg?type=shield&issueType=license)](https://app.fossa.com/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin?ref=badge_shield&issueType=license)
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-1.6.1-blue.svg?cacheSeconds=2592000&style=for-the-badge" />
+  <img alt="Version" src="https://img.shields.io/badge/version-1.7.0-blue.svg?cacheSeconds=2592000&style=for-the-badge" />
   <a href="https://github.com/Toxpox/GSB-WiFi-AutoLogin/blob/main/LICENSE" target="_blank">
     <img alt="License: GPLv3" src="https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge" />
   </a>
@@ -20,6 +20,11 @@
 </div>
 
 ---
+## Preview
+
+<p align="center">
+  <img src="assets/preview.gif" alt="GSB WiFi AutoLogin UI demo" width="520">
+</p>
 
 ## ✨ Özellikler
 
