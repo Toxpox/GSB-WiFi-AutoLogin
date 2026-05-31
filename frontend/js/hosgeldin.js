@@ -1,3 +1,35 @@
+// Kota bittiğinde kartı %0 kalan olarak gösterir.
+function kotaKartiDoldu(kotaKart, kota, toplamMb) {
+    kotaKart.classList.remove('gizli');
+
+    var bar = document.getElementById('kota-bar');
+    bar.style.width = '0%';
+    bar.className = 'kota-bar-ic';
+    bar.style.background = 'linear-gradient(90deg, var(--kirmizi), var(--kirmizi-acik))';
+
+    var buyuk = document.getElementById('kota-yuzde-buyuk');
+    buyuk.className = 'kota-yuzde-buyuk tip-low';
+    buyuk.textContent = '0%';
+
+    var detay = document.getElementById('kota-detay');
+    if (toplamMb > 0) {
+        var toplamGb = toplamMb / 1024;
+        detay.innerHTML =
+            '<span><strong>0.0 GB</strong> kalan</span>' +
+            '<span>' + toplamGb.toFixed(0) + ' / ' + toplamGb.toFixed(0) + ' GB kullanıldı</span>';
+    } else {
+        detay.innerHTML = '<span><strong>Kotanız doldu</strong></span>';
+    }
+
+    var yenilenmeEl = document.getElementById('kota-yenilenme');
+    if (kota.yenilenme) {
+        yenilenmeEl.textContent = kota.yenilenme + ' yenilenir';
+        yenilenmeEl.style.display = '';
+    } else {
+        yenilenmeEl.style.display = 'none';
+    }
+}
+
 function hosgeldinGoster(bilgi) {
     document.getElementById('isim-lbl').textContent = bilgi.isim || '';
 
@@ -38,8 +70,11 @@ function hosgeldinGoster(bilgi) {
     var kota = bilgi.kota || {};
     var toplamMb = parseFloat(kota.toplam_mb);
     var kalanMb = parseFloat(kota.kalan_mb);
+    var kotaDoldu = bilgi.kota_doldu || (toplamMb > 0 && kalanMb === 0);
 
-    if (toplamMb && kalanMb) {
+    if (kotaDoldu) {
+        kotaKartiDoldu(kotaKart, kota, toplamMb);
+    } else if (toplamMb > 0 && kalanMb > 0) {
         kotaKart.classList.remove('gizli');
         var oran = Math.max(0, Math.min(1, kalanMb / toplamMb));
         var tone = oran > 0.5 ? 'ok' : oran > 0.2 ? 'warn' : 'low';

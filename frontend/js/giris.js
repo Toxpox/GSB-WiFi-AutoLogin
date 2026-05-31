@@ -52,6 +52,8 @@ async function girisBaslat() {
                 const toplamGb = (parseFloat(kota.toplam_mb) / 1024).toFixed(1);
                 logYaz('  Kota: ' + kalanGb + ' / ' + toplamGb + ' GB', 'soluk');
             } catch (_) {}
+        } else if (sonuc.bilgi && sonuc.bilgi.kota_doldu) {
+            logYaz('  Kota: doldu (%0 kalan)', 'uyari');
         }
         if (sonuc.bilgi && sonuc.bilgi.konum) logYaz('  Konum: ' + sonuc.bilgi.konum, 'soluk');
 

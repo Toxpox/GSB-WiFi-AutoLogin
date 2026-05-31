@@ -8,6 +8,7 @@ pub struct KullaniciBilgi {
     pub son_giris: String,
     pub konum: String,
     pub kota: HashMap<String, String>,
+    pub kota_doldu: bool,
     pub detaylar: Vec<String>,
 }
 
@@ -104,7 +105,50 @@ pub fn bilgi_cek(html: &str) -> KullaniciBilgi {
     }
 
     bilgi.kota = kota_cek(&document);
+    bilgi.kota_doldu = kota_doldu_mu(html);
     bilgi
+}
+
+/// Türkçe karakterleri ASCII'ye indirger ve küçültür; portal etiketlerini
+/// locale (TR/EN) ve büyük/küçük harf farkından bağımsız eşleştirmek için.
+fn turkce_kucult(metin: &str) -> String {
+    let mut sonuc = String::with_capacity(metin.len());
+    for c in metin.chars() {
+        match c {
+            'ı' | 'İ' | 'I' | 'i' => sonuc.push('i'),
+            'ş' | 'Ş' => sonuc.push('s'),
+            'ğ' | 'Ğ' => sonuc.push('g'),
+            'ü' | 'Ü' => sonuc.push('u'),
+            'ö' | 'Ö' => sonuc.push('o'),
+            'ç' | 'Ç' => sonuc.push('c'),
+            other => sonuc.extend(other.to_lowercase()),
+        }
+    }
+    sonuc
+}
+
+/// Kota bittiğinde portal kota satırlarını (Toplam/Kalan MB) göstermez; bunun
+/// yerine "Your quota is expired." / "Kotanız doldu." gibi bir uyarı basar.
+/// Bu fonksiyon o uyarıyı yakalayarak kotanın dolduğunu bildirir.
+fn kota_doldu_mu(html: &str) -> bool {
+    let metin = turkce_kucult(html);
+    const ISARETLER: [&str; 14] = [
+        "quota is expired",
+        "quota has expired",
+        "quota expired",
+        "kotaniz doldu",
+        "kota doldu",
+        "kotaniz bitti",
+        "kota bitti",
+        "kotaniz tukendi",
+        "kota tukendi",
+        "kotaniz sona erdi",
+        "kota sona erdi",
+        "kotaniz dolmustur",
+        "kota dolmustur",
+        "kota sureniz doldu",
+    ];
+    ISARETLER.iter().any(|isaret| metin.contains(isaret))
 }
 
 fn alan_ayikla(bilgi: &mut KullaniciBilgi, txt: &str) {
@@ -215,6 +259,7 @@ mod tests {
         let bilgi = bilgi_cek(html);
 
         assert_eq!(bilgi.isim, "TEST KULLANICI");
+        assert!(!bilgi.kota_doldu);
         assert_eq!(bilgi.son_giris, "25.04.2026 05:07");
         assert_eq!(bilgi.konum, "ABC ÖĞRENCİ YURDU");
         assert_eq!(
@@ -255,6 +300,55 @@ mod tests {
         assert_eq!(form.form_id, "mainForm");
         assert_eq!(form.buton_id, "disconnectButton");
         assert_eq!(form.viewstate, "view-state-1");
+    }
+
+    #[test]
+    fn kota_doldu_uyarisi_tespit_edilir() {
+        // Boş/normal içerikte tetiklenmemeli.
+        assert!(!kota_doldu_mu(
+            r#"<label>Quota information is updated every 5 m.</label>"#
+        ));
+        // İngilizce portal uyarısı.
+        assert!(kota_doldu_mu(
+            r#"<label style="color:red;">Your quota is expired.</label>"#
+        ));
+        // Türkçe portal uyarısı (Türkçe karakterler dâhil).
+        assert!(kota_doldu_mu(r#"<label>Kotanız doldu.</label>"#));
+    }
+
+    #[test]
+    fn kota_doldugunda_isaretlenir() {
+        // Kota bittiğinde MB satırları yoktur, yerine uyarı etiketi gelir.
+        let html = r#"
+            <div id="content-div">
+                <center>
+                    <span class="myinfo">TEST KULLANICI</span>
+                    <label class="myinfo">Last Login: 31.05.2026 16:24</label>
+                    <label class="myinfo">Location : ABC ÖĞRENCİ YURDU</label>
+                    <div id="mainPanel:kotaDisplay">
+                        <table>
+                            <tr>
+                                <td><label>Session Time:</label></td>
+                                <td><label>0 Day 0 h 0 m 0 s</label></td>
+                            </tr>
+                            <tr>
+                                <td><label>Login Time:</label></td>
+                                <td><label>31/05/2026 16:24:29</label></td>
+                            </tr>
+                        </table>
+                        <label style="color:red;">Your quota is expired.</label>
+                    </div>
+                </center>
+            </div>
+        "#;
+
+        let bilgi = bilgi_cek(html);
+
+        assert!(bilgi.kota_doldu);
+        assert!(!bilgi.kota.contains_key("toplam_mb"));
+        assert!(!bilgi.kota.contains_key("kalan_mb"));
+        assert_eq!(bilgi.isim, "TEST KULLANICI");
+        assert_eq!(bilgi.konum, "ABC ÖĞRENCİ YURDU");
     }
 }
 
