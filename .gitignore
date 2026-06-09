@@ -1,0 +1,6 @@
+# Rust / Tauri derleme ciktilari
+src-tauri/target/
+src-tauri/gen/
+
+# Node
+node_modules/

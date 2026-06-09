@@ -1,0 +1,59 @@
+# Changelog
+
+Bu projedeki dikkate değer değişiklikler bu dosyada belgelenir.
+
+Biçim [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) standardını,
+sürümleme [Semantic Versioning](https://semver.org/lang/tr/) kurallarını takip eder.
+
+## [1.7.2] - 2026-06-10
+
+### Güvenlik
+- Giriş isteklerinin yalnızca `wifi.gsb.gov.tr` adresine gönderilmesini garanti eden backend tarafı URL doğrulaması eklendi.
+- Şifreleme anahtarı artık MAC adresine bağlı değil; makine adı + işletim sistemi kullanıcı adından türetiliyor (v2). MAC rastgeleleştirme veya ağ adaptörü değişikliği kayıtlı profilleri bozmuyor. Eski (v1) anahtarla şifrelenmiş kayıtlar okunmaya devam eder ve ilk kayıtta yeni anahtarla yeniden şifrelenir.
+- Çözülemeyen profil kayıtları artık şifreli metni kullanıcı adı gibi göstermiyor; listeden gizleniyor ve yüklenmeye çalışıldığında anlaşılır bir hata veriliyor.
+- Kısa kullanıcı adlarında maskeleme daha az karakter açığa çıkarıyor.
+
+### Düzeltmeler
+- Profil dosyası (`user_config.json`) atomik yazılıyor; yazma sırasındaki kesinti dosyayı bozmuyor.
+- Portal 5xx hatası döndürdüğünde yanıltıcı "Giriş doğrulanamadı" yerine yeniden deneme (retry/backoff) akışı çalışıyor.
+- "Önceki oturumu düşür" akışı da eşzamanlı giriş kilidini kullanıyor; çifte istek engellendi.
+- Çıkış isteği başarısız olduğunda kullanıcıya görünür bir uyarı gösteriliyor.
+- Yeni konuma taşınan ayar dosyasının exe yanındaki eski kopyası temizleniyor.
+
+### Bakım
+- Sürüm numarası tek kaynaktan (Cargo.toml) yönetiliyor: `config.rs` `env!("CARGO_PKG_VERSION")` kullanıyor, `tauri.conf.json`'dan mükerrer `version` alanı kaldırıldı.
+- Kullanılmayan `pbkdf2/simple` feature'ı kaldırıldı; bağımlılık ağacı küçüldü.
+- CI'a Rust derleme cache'i ve Tauri CLI cache'i eklendi; derleme ve release süreleri kısaldı.
+- `.gitignore` eklendi.
+
+## [1.7.0] - 2026-05-31
+
+- Kota dolduğunda kota kartının görünmemesi sorunu düzeltildi; kota dolu durumu artık %0 kalan olarak gösteriliyor.
+- Arayüz tasarım optimizasyonları.
+
+## [1.6.1] - 2026-04-26
+
+- Çıkış (logout) akışı düzeltildi.
+
+## [1.6.0] - 2026-04-25
+
+- Çoklu profil desteği: birden fazla hesabı kaydetme, seçme ve silme.
+- GitHub Releases üzerinden yeni sürüm kontrolü.
+- CI/CD iyileştirmeleri.
+
+## [1.5.0] - 2026-04-07
+
+- Proje Rust + Tauri v2 ile yeniden yazıldı.
+- AES-GCM ile yerel kimlik bilgisi şifreleme.
+- Maksimum cihaz durumunda önceki oturumu düşürme.
+
+## [1.0.0] - 2026-03-31
+
+- İlk kararlı sürüm.
+
+[1.7.2]: https://github.com/Toxpox/GSB-WiFi-AutoLogin/compare/v1.7.0...v1.7.2
+[1.7.0]: https://github.com/Toxpox/GSB-WiFi-AutoLogin/compare/v1.6.1...v1.7.0
+[1.6.1]: https://github.com/Toxpox/GSB-WiFi-AutoLogin/compare/v1.6.0...v1.6.1
+[1.6.0]: https://github.com/Toxpox/GSB-WiFi-AutoLogin/compare/v1.5.0...v1.6.0
+[1.5.0]: https://github.com/Toxpox/GSB-WiFi-AutoLogin/compare/v1.0.0...v1.5.0
+[1.0.0]: https://github.com/Toxpox/GSB-WiFi-AutoLogin/releases/tag/v1.0.0

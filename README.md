@@ -6,7 +6,7 @@
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin.svg?type=shield&issueType=license)](https://app.fossa.com/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin?ref=badge_shield&issueType=license)
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-1.7.0-blue.svg?cacheSeconds=2592000&style=for-the-badge" />
+  <img alt="Version" src="https://img.shields.io/badge/version-1.7.2-blue.svg?cacheSeconds=2592000&style=for-the-badge" />
   <a href="https://github.com/Toxpox/GSB-WiFi-AutoLogin/blob/main/LICENSE" target="_blank">
     <img alt="License: GPLv3" src="https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge" />
   </a>
@@ -67,7 +67,9 @@ Uygulama başarılı bağlantıdan sonra GitHub Releases üzerinden yeni sürüm
 
 Bu uygulama **yalnızca GSB/KYK captive portali** için tasarlanmıştır.
 
-Kimlik bilgileriniz sadece kendi bilgisayarınızda saklanır. Kayıtlı profiller `user_config.json` içinde AES-GCM ile şifrelenir ve hiçbir dış sunucuya gönderilmez. GitHub sürüm kontrolü yalnızca release bilgisi almak için GitHub API'ye istek atar; kullanıcı adı, şifre veya profil bilgisi bu isteğe eklenmez.
+Kimlik bilgileriniz sadece kendi bilgisayarınızda saklanır. Kayıtlı profiller `user_config.json` içinde, cihaza özgü bir anahtarla (makine adı + işletim sistemi kullanıcı adından türetilir) AES-GCM kullanılarak şifrelenir ve hiçbir dış sunucuya gönderilmez. GitHub sürüm kontrolü yalnızca release bilgisi almak için GitHub API'ye istek atar; kullanıcı adı, şifre veya profil bilgisi bu isteğe eklenmez.
+
+Giriş istekleri backend tarafında doğrulanır ve yalnızca `wifi.gsb.gov.tr` adresine gönderilebilir; kimlik bilgilerinin başka bir adrese iletilmesi mümkün değildir.
 
 SSL doğrulaması, GSB captive portal akışının yönlendirme gereksinimleri nedeniyle portal istemcisinde devre dışıdır. GitHub sürüm kontrolü ise ayrı ve normal TLS doğrulamalı HTTP istemcisiyle yapılır.
 
@@ -116,6 +118,8 @@ Frontend sözdizimi için:
 ```powershell
 node --check frontend/js/app.js
 node --check frontend/js/giris.js
+node --check frontend/js/log.js
+node --check frontend/js/hosgeldin.js
 ```
 
 ---
@@ -130,6 +134,12 @@ node --check frontend/js/giris.js
 | **AES-GCM** | Yerel kullanıcı bilgisi şifreleme |
 | **reqwest** | Captive portal, çıkış işlemi ve GitHub Releases API istekleri |
 | **GitHub Releases API** | Yeni sürüm kontrolü |
+
+---
+
+## 📝 Sürüm Geçmişi
+
+Tüm değişiklikler için **[CHANGELOG.md](CHANGELOG.md)** dosyasına bakabilirsiniz.
 
 ---
 

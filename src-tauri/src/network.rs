@@ -81,9 +81,14 @@ pub async fn giris_yap(
 
     let mut son_hata: Option<GSBError> = None;
 
+    // Not: Login POST'u idempotent degildir; timeout sonrasi tekrar deneme,
+    // ilk istek sunucuya ulastiysa maksimum cihaz akisini tetikleyebilir.
+    // Portal bu durumu maksimumCihazHakkiDolu yonlendirmesiyle bildirdigi
+    // icin tekrar deneme bilincli olarak korunuyor.
     for deneme in 1..=MAX_DENEME {
         match client.post(url).form(&veri).send().await {
             Ok(r) => {
+                let status = r.status();
                 let final_url = r.url().to_string();
                 let body = match r.text().await {
                     Ok(body) => body,
@@ -97,7 +102,15 @@ pub async fn giris_yap(
                     }
                 };
 
-                if body.is_empty() {
+                if status.is_server_error() {
+                    // 5xx gecici sunucu hatasidir; "Giris dogrulanamadi"
+                    // yerine retry/backoff akisina sokulur.
+                    son_hata = Some(GSBError::AgHatasi {
+                        mesaj: format!("HTTP {}", status),
+                        kullanici_mesaji: "Sunucu gecici bir hata dondurdu. Lutfen tekrar deneyin."
+                            .into(),
+                    });
+                } else if body.is_empty() {
                     // Body okunamadiginda retry/backoff akisi devam etsin.
                 } else {
                     if final_url.contains("maksimumCihazHakkiDolu") {

@@ -1,6 +1,6 @@
 const { invoke } = window.__TAURI__.core;
 
-let VERSION = "1.7.0";
+let VERSION = "1.7.2";
 let GIRIS_URL = "https://wifi.gsb.gov.tr/j_spring_security_check";
 let KAYITLI_PROFILLER = [];
 let SECILI_PROFIL_ID = null;
@@ -29,6 +29,7 @@ function ekranGoster(id) {
         e.classList.add('gizli');
     });
     const hedef = document.getElementById(id);
+    if (!hedef) return;
     requestAnimationFrame(() => {
         hedef.classList.remove('gizli');
         hedef.classList.add('aktif');

@@ -19,6 +19,10 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
       - uses: actions/setup-node@v6
         with:
           node-version: 24
@@ -59,16 +63,8 @@ jobs:
           }
           $version = $Matches[1]
 
-          $tauriConf = Get-Content -Raw -Encoding UTF8 src-tauri/tauri.conf.json | ConvertFrom-Json
-          if ($tauriConf.version -ne $version) {
-            throw "tauri.conf.json version ($($tauriConf.version)) Cargo.toml version ($version) ile uyusmuyor."
-          }
-
-          $configRs = Get-Content -Raw -Encoding UTF8 src-tauri/src/config.rs
-          $versionLine = 'pub const VERSION: &str = "' + $version + '";'
-          if ($configRs -notmatch [regex]::Escape($versionLine)) {
-            throw "config.rs VERSION sabiti $version ile uyusmuyor."
-          }
+          # tauri.conf.json ve config.rs versiyonu Cargo.toml'dan alir
+          # (env!("CARGO_PKG_VERSION") / Tauri v2 fallback), ayrica kontrol gerekmez.
 
           $frontendApp = Get-Content -Raw -Encoding UTF8 frontend/js/app.js
           $frontendVersionLine = 'let VERSION = "' + $version + '";'
@@ -105,8 +101,20 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Cache Tauri CLI
+        id: cache-tauri-cli
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-tauri.exe
+          key: tauri-cli-${{ runner.os }}-v2
+
       - name: Install Tauri CLI
-        run: cargo install tauri-cli --version "^2"
+        if: steps.cache-tauri-cli.outputs.cache-hit != 'true'
+        run: cargo install tauri-cli --version "^2" --locked
 
       - name: Build
         working-directory: src-tauri

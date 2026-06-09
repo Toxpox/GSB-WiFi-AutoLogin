@@ -5,9 +5,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::errors::GSBError;
 
-#[allow(dead_code)]
-pub const VERSION: &str = "1.7.0";
-#[allow(dead_code)]
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const PORTAL_HOST: &str = "wifi.gsb.gov.tr";
 pub const GIRIS_URL: &str = "https://wifi.gsb.gov.tr/j_spring_security_check";
 pub const GITHUB_URL: &str = "https://github.com/Toxpox/GSB-WiFi-AutoLogin";
 pub const GITHUB_RELEASE_LATEST_URL: &str =
@@ -19,7 +18,7 @@ pub const TIMEOUT_SECS: u64 = 15;
 pub const MAX_DENEME: u32 = 3;
 pub const BACKOFF_TABANI: f64 = 2.0;
 pub const BACKOFF_CARPAN: f64 = 3.0;
-pub const USER_AGENT: &str = concat!("GSB-WiFi-AutoLogin/", "1.7.0");
+pub const USER_AGENT: &str = concat!("GSB-WiFi-AutoLogin/", env!("CARGO_PKG_VERSION"));
 pub const PORTAL_USER_AGENT: &str =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36";
 
@@ -106,7 +105,7 @@ pub fn kayitli_kullanici_al() -> (String, String) {
     let Some(profil) = aktif_profil(&depo) else {
         return (String::new(), String::new());
     };
-    profil_coz(&profil)
+    profil_coz(&profil).unwrap_or_default()
 }
 
 pub fn kullanici_kaydet(k: &str, sifre: &str) -> Result<(), GSBError> {
@@ -129,7 +128,7 @@ pub fn kullanici_kaydet(k: &str, sifre: &str) -> Result<(), GSBError> {
     if let Some(mevcut) = depo
         .profiles
         .iter_mut()
-        .find(|p| p.id == id || profil_kullanici_adi(p) == k)
+        .find(|p| p.id == id || profil_kullanici_adi(p).as_deref() == Some(k))
     {
         *mevcut = yeni_profil;
     } else {
@@ -155,7 +154,12 @@ pub fn profil_yukle(id: &str) -> Result<(String, String), GSBError> {
             "Secilen profil bulunamadi.",
         ));
     };
-    let kullanici = profil_coz(&profil);
+    let Some(kullanici) = profil_coz(&profil) else {
+        return Err(ayar_hatasi(
+            "Profil cozulemedi",
+            "Profil bilgileri bu cihazda cozulemedi. Profili silip yeniden kaydedin.",
+        ));
+    };
     depo.aktif_id = Some(profil.id);
     profil_deposu_yaz(&depo)?;
     Ok(kullanici)
@@ -189,7 +193,7 @@ fn profil_deposu_oku() -> ProfilAyarlari {
             depo.profiles.retain(|p| !p.username.is_empty());
             for profil in &mut depo.profiles {
                 if profil.id.is_empty() {
-                    let username = profil_kullanici_adi(profil);
+                    let username = profil_kullanici_adi(profil).unwrap_or_default();
                     profil.id = profil_id_uret(&username);
                 }
             }
@@ -203,14 +207,30 @@ fn profil_deposu_oku() -> ProfilAyarlari {
 fn profil_deposu_yaz(depo: &ProfilAyarlari) -> Result<(), GSBError> {
     let json = serde_json::to_string_pretty(depo)
         .map_err(|e| ayar_hatasi(e, "Ayar dosyasi hazirlanamadi."))?;
-    fs::write(ayar_yolu()?, json)
-        .map_err(|e| ayar_hatasi(e, "Kullanici bilgileri kaydedilemedi."))?;
+    let yol = ayar_yolu()?;
+
+    // Yazma sirasinda kesinti dosyayi bozmasin diye once gecici dosyaya
+    // yazip uzerine tasiyoruz.
+    let gecici = yol.with_extension("json.tmp");
+    fs::write(&gecici, json).map_err(|e| ayar_hatasi(e, "Kullanici bilgileri kaydedilemedi."))?;
+    fs::rename(&gecici, &yol).map_err(|e| ayar_hatasi(e, "Kullanici bilgileri kaydedilemedi."))?;
+
+    // Yeni konuma basariyla yazildiysa exe yanindaki eski dosya artik gereksiz.
+    let eski = eski_ayar_yolu();
+    if eski != yol && eski.is_file() {
+        let _ = fs::remove_file(eski);
+    }
     Ok(())
 }
 
 fn tekil_kayittan_depo(veri: KayitliKullanici) -> ProfilAyarlari {
     let username = if veri.sifreli {
-        crate::crypto::coz(&veri.username).unwrap_or_else(|_| veri.username.clone())
+        match crate::crypto::coz(&veri.username) {
+            Ok(u) => u,
+            // Cozulemeyen eski kayit tasinmasin; sifreli metin kullanici adi
+            // gibi gorunmesin.
+            Err(_) => return ProfilAyarlari::default(),
+        }
     } else {
         veri.username.clone()
     };
@@ -240,18 +260,20 @@ fn aktif_profil(depo: &ProfilAyarlari) -> Option<KayitliProfil> {
         .cloned()
 }
 
-fn profil_coz(profil: &KayitliProfil) -> (String, String) {
+/// Profil bilgilerini cozer. Cozme basarisizsa (ornegin kayit baska bir
+/// makinede sifrelendiyse) sifreli metni geri sizdirmamak icin None doner.
+fn profil_coz(profil: &KayitliProfil) -> Option<(String, String)> {
     if profil.sifreli {
-        let k = crate::crypto::coz(&profil.username).unwrap_or_else(|_| profil.username.clone());
-        let s = crate::crypto::coz(&profil.password).unwrap_or_else(|_| profil.password.clone());
-        (k, s)
+        let k = crate::crypto::coz(&profil.username).ok()?;
+        let s = crate::crypto::coz(&profil.password).ok()?;
+        Some((k, s))
     } else {
-        (profil.username.clone(), profil.password.clone())
+        Some((profil.username.clone(), profil.password.clone()))
     }
 }
 
-fn profil_kullanici_adi(profil: &KayitliProfil) -> String {
-    profil_coz(profil).0
+fn profil_kullanici_adi(profil: &KayitliProfil) -> Option<String> {
+    profil_coz(profil).map(|(k, _)| k)
 }
 
 fn profil_ozetleri(depo: &ProfilAyarlari) -> Vec<KullaniciProfiliOzet> {
@@ -263,7 +285,7 @@ fn profil_ozetleri(depo: &ProfilAyarlari) -> Vec<KullaniciProfiliOzet> {
     depo.profiles
         .iter()
         .filter_map(|profil| {
-            let username = profil_kullanici_adi(profil);
+            let username = profil_kullanici_adi(profil)?;
             if username.is_empty() {
                 return None;
             }
@@ -297,9 +319,14 @@ fn simdiki_zaman() -> u64 {
 
 pub fn tc_maskele(tc: &str) -> String {
     let chars: Vec<char> = tc.chars().collect();
-    if chars.len() >= 7 {
+    if chars.len() >= 10 {
         let bas: String = chars.iter().take(3).collect();
         let son: String = chars[chars.len() - 3..].iter().collect();
+        format!("{}****{}", bas, son)
+    } else if chars.len() >= 7 {
+        // Kisa girdilerde daha az karakter aciga cikar.
+        let bas: String = chars.iter().take(2).collect();
+        let son: String = chars[chars.len() - 2..].iter().collect();
         format!("{}****{}", bas, son)
     } else {
         "***".to_string()
@@ -323,13 +350,38 @@ mod tests {
         assert_eq!(depo.aktif_id.as_deref(), Some(depo.profiles[0].id.as_str()));
         assert_eq!(
             profil_coz(&depo.profiles[0]),
-            ("12345678901".into(), "secret".into())
+            Some(("12345678901".into(), "secret".into()))
         );
 
         let ozetler = profil_ozetleri(&depo);
         assert_eq!(ozetler.len(), 1);
         assert_eq!(ozetler[0].masked_username, "123****901");
         assert!(ozetler[0].aktif);
+    }
+
+    #[test]
+    fn cozulemeyen_profil_listelenmez() {
+        let depo = ProfilAyarlari {
+            version: 2,
+            aktif_id: None,
+            profiles: vec![KayitliProfil {
+                id: "abc".into(),
+                username: "Z2VjZXJzaXotc2lmcmVsaS12ZXJp".into(),
+                password: "Z2VjZXJzaXotc2lmcmVsaS12ZXJp".into(),
+                sifreli: true,
+                son_kullanim: 0,
+            }],
+        };
+
+        assert!(profil_ozetleri(&depo).is_empty());
+        assert_eq!(profil_coz(&depo.profiles[0]), None);
+    }
+
+    #[test]
+    fn tc_maskeleme_uzunluga_gore_daralir() {
+        assert_eq!(tc_maskele("12345678901"), "123****901");
+        assert_eq!(tc_maskele("1234567"), "12****67");
+        assert_eq!(tc_maskele("123456"), "***");
     }
 
     #[test]

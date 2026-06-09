@@ -1,6 +1,6 @@
 [package]
 name = "gsb-wifi-autologin"
-version = "1.7.0"
+version = "1.7.2"
 edition = "2021"
 
 [build-dependencies]
@@ -14,7 +14,7 @@ reqwest = { version = "0.12", features = ["json", "cookies", "rustls-tls"], defa
 scraper = "0.22"
 tokio = { version = "1", default-features = false, features = ["net", "sync", "time"] }
 aes-gcm = "0.10"
-pbkdf2 = { version = "0.12", features = ["simple"] }
+pbkdf2 = "0.12"
 sha2 = "0.10"
 base64 = "0.22"
 thiserror = "2"

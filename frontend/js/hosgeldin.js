@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (!cikisTamam) {
-            durumGuncelle('Bağlı', 'basari');
+            await modalUyari('Çıkış Başarısız', 'Çıkış isteği tamamlanamadı. GSB WiFi ağına bağlı olduğunuzdan emin olun.');
             return;
         }
 

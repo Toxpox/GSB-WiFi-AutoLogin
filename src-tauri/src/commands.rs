@@ -74,6 +74,23 @@ fn giris_sonuc_olustur(
     }
 }
 
+/// Kimlik bilgilerinin yalnizca GSB portaline gonderilmesini garanti eder.
+/// Portal istemcisi SSL dogrulamasini kapattigi icin URL backend tarafinda
+/// allowlist ile sinirlanmalidir.
+fn portal_url_dogrula(url: &str) -> Result<(), GSBError> {
+    let gecerli = url::Url::parse(url)
+        .map(|u| u.scheme() == "https" && u.host_str() == Some(config::PORTAL_HOST))
+        .unwrap_or(false);
+    if gecerli {
+        Ok(())
+    } else {
+        Err(GSBError::AgHatasi {
+            mesaj: format!("Gecersiz portal adresi: {}", url),
+            kullanici_mesaji: "Giris adresi GSB portali degil.".into(),
+        })
+    }
+}
+
 #[tauri::command]
 pub async fn giris(
     url: String,
@@ -81,6 +98,7 @@ pub async fn giris(
     sifre: String,
     state: State<'_, AppState>,
 ) -> Result<GirisSonuc, String> {
+    portal_url_dogrula(&url).map_err(|e: GSBError| -> String { e.into() })?;
     {
         let mut aktif = state.giris_aktif.lock().await;
         if *aktif {
@@ -268,37 +286,53 @@ pub async fn maksimum_cihaz_isle(
     sifre: String,
     state: State<'_, AppState>,
 ) -> Result<GirisSonuc, String> {
-    let html = state.son_html.lock().await.clone();
-    let mevcut_client = state.client.lock().await.normal.clone();
-
-    network::onceki_oturumu_kapat(&mevcut_client, &html, &url).await;
-    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-
-    // Eski oturum cerezlerini tasimamak icin ikinci denemeden once istemciyi yenile.
+    portal_url_dogrula(&url).map_err(|e: GSBError| -> String { e.into() })?;
     {
-        let mut client = state.client.lock().await;
-        *client = network::client_olustur().map_err(|e: GSBError| -> String { e.into() })?;
-    }
-    let yeni_client = state.client.lock().await.normal.clone();
-
-    let yeni_html = match network::giris_yap(&yeni_client, &url, &kullanici, &sifre).await {
-        Ok(html) => html,
-        Err(GSBError::MaksimumCihaz { .. }) => {
-            return Err(GSBError::GirisBasarisiz {
-                mesaj: "Maksimum cihaz limiti devam ediyor".into(),
-                kullanici_mesaji:
-                    "Onceki cihazin baglantisi henuz dusmedi. Lutfen manuel tekrar deneyin.".into(),
-            }
-            .into());
+        let mut aktif = state.giris_aktif.lock().await;
+        if *aktif {
+            return Err("Giris zaten devam ediyor".into());
         }
-        Err(e) => return Err(e.into()),
-    };
+        *aktif = true;
+    }
 
-    *state.son_html.lock().await = yeni_html.clone();
-    let bilgi = parser::bilgi_cek(&yeni_html);
-    let ip = network::ip_bul(&url).await.ok();
-    let kayit = config::kullanici_kaydet(&kullanici, &sifre);
-    Ok(giris_sonuc_olustur(bilgi, ip, kayit))
+    let sonuc = async {
+        let html = state.son_html.lock().await.clone();
+        let mevcut_client = state.client.lock().await.normal.clone();
+
+        network::onceki_oturumu_kapat(&mevcut_client, &html, &url).await;
+        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+        // Eski oturum cerezlerini tasimamak icin ikinci denemeden once istemciyi yenile.
+        {
+            let mut client = state.client.lock().await;
+            *client = network::client_olustur().map_err(|e: GSBError| -> String { e.into() })?;
+        }
+        let yeni_client = state.client.lock().await.normal.clone();
+
+        let yeni_html = match network::giris_yap(&yeni_client, &url, &kullanici, &sifre).await {
+            Ok(html) => html,
+            Err(GSBError::MaksimumCihaz { .. }) => {
+                return Err(GSBError::GirisBasarisiz {
+                    mesaj: "Maksimum cihaz limiti devam ediyor".into(),
+                    kullanici_mesaji:
+                        "Onceki cihazin baglantisi henuz dusmedi. Lutfen manuel tekrar deneyin."
+                            .into(),
+                }
+                .into());
+            }
+            Err(e) => return Err(e.into()),
+        };
+
+        *state.son_html.lock().await = yeni_html.clone();
+        let bilgi = parser::bilgi_cek(&yeni_html);
+        let ip = network::ip_bul(&url).await.ok();
+        let kayit = config::kullanici_kaydet(&kullanici, &sifre);
+        Ok(giris_sonuc_olustur(bilgi, ip, kayit))
+    }
+    .await;
+
+    *state.giris_aktif.lock().await = false;
+    sonuc
 }
 
 #[tauri::command]
@@ -324,6 +358,15 @@ mod tests {
         );
         assert_eq!(surum_karsilastir("v1.6.0", "1.6.0"), Some(Ordering::Equal));
         assert_eq!(surum_karsilastir("v1.5.9", "1.6.0"), Some(Ordering::Less));
+    }
+
+    #[test]
+    fn sadece_gsb_portal_urlsi_kabul_edilir() {
+        assert!(portal_url_dogrula("https://wifi.gsb.gov.tr/j_spring_security_check").is_ok());
+        assert!(portal_url_dogrula("http://wifi.gsb.gov.tr/j_spring_security_check").is_err());
+        assert!(portal_url_dogrula("https://example.com/j_spring_security_check").is_err());
+        assert!(portal_url_dogrula("https://wifi.gsb.gov.tr.evil.com/login").is_err());
+        assert!(portal_url_dogrula("bozuk url").is_err());
     }
 
     #[test]
