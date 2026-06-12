@@ -6,7 +6,7 @@
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin.svg?type=shield&issueType=license)](https://app.fossa.com/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin?ref=badge_shield&issueType=license)
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-1.7.2-blue.svg?cacheSeconds=2592000&style=for-the-badge" />
+  <img alt="Version" src="https://img.shields.io/badge/version-1.8.0-blue.svg?cacheSeconds=2592000&style=for-the-badge" />
   <a href="https://github.com/Toxpox/GSB-WiFi-AutoLogin/blob/main/LICENSE" target="_blank">
     <img alt="License: GPLv3" src="https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge" />
   </a>
@@ -28,18 +28,21 @@
 
 ## ✨ Özellikler
 
-- 🎨 **Modern Arayüz:** Koyu tema, kompakt giriş ekranı ve akıcı ekran geçişleri.
-- ⚡ **Otomatik Giriş:** Kullanıcı adı ve şifre ile tek tıkla GSB WiFi captive portalına bağlanma.
-- 👥 **Çoklu Profil:** Birden fazla kullanıcı hesabını yerelde kaydetme, seçme ve silme.
-- 👁️ **Şifre Kontrolü:** Giriş ekranında şifreyi göster/gizle desteği.
-- 👋 **Hoş Geldin Ekranı:** Başarılı girişten sonra kullanıcı, konum ve son giriş bilgilerini gösterme.
+- ⚡ **Otomatik Giriş:** Uygulama açılışında kayıtlı profille kendiliğinden bağlanma; tek tıkla manuel giriş her zaman mümkün.
+- 🖥️ **Sistem Tepsisi:** Pencere kapatılınca tepsiye küçülme; tepsi menüsünden Bağlan / Çıkış Yap / Pencereyi Göster; bağlantı durumu tepsi ipucunda.
+- 🚀 **Başlangıçta Çalışma:** Windows açılışında sessizce (pencere açmadan, tepsiden) başlama seçeneği.
+- 🔁 **Otomatik Yeniden Bağlanma:** Periyodik oturum canlılık kontrolü; oturum düştüyse son kimlik bilgileriyle kendiliğinden yeniden giriş.
+- 📡 **GSB Ağı Algılama:** GSB ağında değilken uyarı; gereksiz giriş denemeleri yapılmaz.
+- 🆕 **Otomatik Güncelleme:** Açılışta arka planda sürüm kontrolü; güncelleme varsa pencerenin üstünde yeşil bir bar belirir, tek tıkla imzalı güncelleme indirilip kurulur ve uygulama yeniden başlar (installer sürümünde; portable'da indirme sayfası açılır).
+- 🔔 **Kota Bildirimleri:** Kota %20'nin altına düşünce veya dolunca Windows bildirimi; bağlantı koptuğunda da haber verir.
 - 📊 **Kota Takibi:** Kalan kota, yüzde göstergesi, kullanılan kota ve yenilenme tarihi.
-- 📜 **Sistem Günlüğü:** Giriş, çıkış, hata ve güncelleme kontrolü adımlarını log panelinden takip etme.
+- 👥 **Çoklu Profil:** Birden fazla hesabı yerelde kaydetme, takma ad verme, seçme ve silme.
+- ⚙️ **Ayarlar Paneli:** Otomatik giriş, tepsiye küçülme, başlangıçta çalışma, yeniden bağlanma ve bildirimler için kalıcı anahtarlar.
+- 📜 **Sistem Günlüğü:** Tüm adımlar log panelinde ve `logs/uygulama.log` dosyasında (otomatik rotasyonlu); "Klasörü Aç" ile erişim.
 - 🔒 **Şifreleme:** Kullanıcı bilgilerini `user_config.json` içinde AES-GCM ile şifreli saklama.
 - 🚪 **Oturum Yönetimi:** Aktif oturumu sonlandırma ve maksimum cihaz durumunda önceki oturumu düşürme.
 - 🔄 **Yeniden Deneme:** Ağ hatalarında exponential backoff ile kontrollü tekrar deneme.
-- 🧭 **GitHub Kısayolu:** Sağ üstteki GitHub butonu ile proje deposunu varsayılan tarayıcıda açma.
-- 🆕 **Sürüm Kontrolü:** Başarılı bağlantıdan sonra GitHub Releases üzerinden yeni sürüm denetimi.
+- 🎨 **Modern Arayüz:** Koyu tema, kompakt giriş ekranı ve akıcı ekran geçişleri.
 
 ---
 
@@ -47,7 +50,9 @@
 
 En güncel sürümü **[Releases](https://github.com/Toxpox/GSB-WiFi-AutoLogin/releases)** sayfasından indirebilirsiniz.
 
-Uygulama başarılı bağlantıdan sonra GitHub Releases üzerinden yeni sürümü kontrol eder. Yeni sürüm bulunursa kullanıcıdan onay alarak release sayfasını açar.
+Uygulama açılışta yeni sürümü arka planda kontrol eder. Güncelleme varsa pencerenin üstünde yeşil bir bar belirir: installer (NSIS) kurulumunda tek tıkla imzalı güncelleme indirilir, kurulur ve uygulama yeniden başlar; portable sürümde bar GitHub release sayfasını açar.
+
+> ℹ️ Otomatik güncelleme v1.8.0 ile geldi: v1.8.0'ı bir kez elle kurmanız gerekir, sonraki sürümler uygulama içinden güncellenir.
 
 ### 📦 Installer vs 🚀 Portable
 
@@ -57,7 +62,8 @@ Uygulama başarılı bağlantıdan sonra GitHub Releases üzerinden yeni sürüm
 | **Konum** | `AppData\Local` dizini altına yerleşir. | Herhangi bir klasörden veya USB bellekten çalışır. |
 | **Başlat Menüsü** | Kısayol oluşturur, kolay erişim sağlar. | Kısayol oluşturmaz, bağımsızdır. |
 | **Kaldırma** | Windows "Program Ekle/Kaldır" menüsünden kaldırılır. | Sadece dosyayı silmek yeterlidir. |
-| **Güncelleme** | Yeni installer çalıştırılarak üzerine yazılır. | Eski dosya silinip yenisi ile değiştirilir. |
+| **Güncelleme** | Uygulama içinden otomatik (yeşil güncelleme barı). | Eski dosya silinip yenisi ile değiştirilir. |
+| **Başlangıçta çalışma** | Desteklenir. | Desteklenir (exe taşınırsa kayıt yeniden yapılmalı). |
 
 > 💡 **Not:** Her iki sürüm de aynı uygulama mantığını kullanır. Kullanım alışkanlığınıza göre tercih yapabilirsiniz.
 
@@ -72,6 +78,8 @@ Kimlik bilgileriniz sadece kendi bilgisayarınızda saklanır. Kayıtlı profill
 Giriş istekleri backend tarafında doğrulanır ve yalnızca `wifi.gsb.gov.tr` adresine gönderilebilir; kimlik bilgilerinin başka bir adrese iletilmesi mümkün değildir.
 
 SSL doğrulaması, GSB captive portal akışının yönlendirme gereksinimleri nedeniyle portal istemcisinde devre dışıdır. GitHub sürüm kontrolü ise ayrı ve normal TLS doğrulamalı HTTP istemcisiyle yapılır.
+
+Otomatik güncellemeler kriptografik olarak imzalıdır (minisign): uygulama yalnızca gömülü genel anahtarla doğrulanan güncellemeleri kurar; imzasız veya değiştirilmiş bir paket kurulmaz.
 
 ---
 
@@ -133,7 +141,8 @@ node --check frontend/js/hosgeldin.js
 | ![HTML/CSS/JS](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white) | Etkileşimli frontend arayüzü |
 | **AES-GCM** | Yerel kullanıcı bilgisi şifreleme |
 | **reqwest** | Captive portal, çıkış işlemi ve GitHub Releases API istekleri |
-| **GitHub Releases API** | Yeni sürüm kontrolü |
+| **GitHub Releases API** | Yeni sürüm kontrolü ve otomatik güncelleme dağıtımı |
+| **tauri-plugin-updater** | İmzalı uygulama içi otomatik güncelleme |
 
 ---
 

@@ -161,6 +161,61 @@ pub async fn giris_yap(
     }))
 }
 
+/// Internet erisimi var mi? Captive portal oturumu dusmusse NCSI istegi
+/// portala yonlenir ve beklenen govde donmez.
+pub async fn internet_var_mi() -> bool {
+    let Ok(client) = ClientBuilder::new()
+        .redirect(Policy::none())
+        .timeout(Duration::from_secs(5))
+        .build()
+    else {
+        return false;
+    };
+
+    match client.get(BAGLANTI_TEST_URL).send().await {
+        Ok(yanit) => {
+            let status = yanit.status().as_u16();
+            let body = yanit.text().await.unwrap_or_default();
+            ncsi_yaniti_saglam_mi(status, &body)
+        }
+        Err(_) => false,
+    }
+}
+
+fn ncsi_yaniti_saglam_mi(status: u16, body: &str) -> bool {
+    status == 200 && body.contains(BAGLANTI_TEST_BEKLENEN)
+}
+
+/// GSB aginda miyiz? Once DNS: cozulemiyorsa portal erisilemez demektir.
+/// Ozel (RFC 1918) IP'ye cozuluyorsa kesin yurt agindayiz. Genel IP'ye
+/// cozulduyse TCP baglanti denemesiyle dogrulanir; yanlis negatif kullaniciyi
+/// engellememeli.
+pub async fn gsb_aginda_mi() -> bool {
+    let Ok(adresler) = tokio::net::lookup_host((PORTAL_HOST, 443)).await else {
+        return false;
+    };
+    let adresler: Vec<_> = adresler.collect();
+    if adresler.iter().any(|addr| ozel_ip_mi(&addr.ip())) {
+        return true;
+    }
+    for addr in adresler {
+        let deneme =
+            tokio::time::timeout(Duration::from_secs(3), tokio::net::TcpStream::connect(addr))
+                .await;
+        if matches!(deneme, Ok(Ok(_))) {
+            return true;
+        }
+    }
+    false
+}
+
+fn ozel_ip_mi(ip: &std::net::IpAddr) -> bool {
+    match ip {
+        std::net::IpAddr::V4(v4) => v4.is_private(),
+        std::net::IpAddr::V6(_) => false,
+    }
+}
+
 pub async fn cikis_yap(clients: &PortalClients) -> Result<bool, GSBError> {
     let ilk_yanit = clients
         .no_redirect
@@ -289,4 +344,27 @@ pub async fn onceki_oturumu_kapat(client: &Client, html: &str, login_url: &str) 
         .await
         .map(|r| r.status().is_success())
         .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ozel_ip_dogru_tespit_edilir() {
+        let ozel: std::net::IpAddr = "10.20.30.40".parse().unwrap();
+        let ozel2: std::net::IpAddr = "192.168.1.1".parse().unwrap();
+        let genel: std::net::IpAddr = "93.184.216.34".parse().unwrap();
+        assert!(ozel_ip_mi(&ozel));
+        assert!(ozel_ip_mi(&ozel2));
+        assert!(!ozel_ip_mi(&genel));
+    }
+
+    #[test]
+    fn ncsi_yaniti_dogru_degerlendirilir() {
+        assert!(ncsi_yaniti_saglam_mi(200, "Microsoft Connect Test"));
+        // Portal araya girdiginde farkli govde veya yonlendirme doner.
+        assert!(!ncsi_yaniti_saglam_mi(200, "<html>login</html>"));
+        assert!(!ncsi_yaniti_saglam_mi(302, ""));
+    }
 }

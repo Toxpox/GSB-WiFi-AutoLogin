@@ -118,6 +118,9 @@ jobs:
 
       - name: Build
         working-directory: src-tauri
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: cargo tauri build
 
       - name: Prepare release files
@@ -138,9 +141,43 @@ jobs:
           Copy-Item $portableSource "GSB_WiFi_AutoLogin_portable.exe"
           Copy-Item $installerSource.FullName "GSB_WiFi_AutoLogin_setup.exe"
 
+          # Updater imzasi: .sig yoksa FAIL — latest.json'siz tek bir release
+          # bile releases/latest/download endpoint'i uzerinden TUM
+          # istemcilerin guncelleme kontrolunu kirar.
+          $sigSource = "$($installerSource.FullName).sig"
+          if (!(Test-Path $sigSource)) {
+            throw "Updater imzasi bulunamadi: $sigSource (TAURI_SIGNING_PRIVATE_KEY secret'i tanimli mi?)"
+          }
+          $signature = (Get-Content -Raw -Encoding UTF8 $sigSource).Trim()
+          if ([string]::IsNullOrWhiteSpace($signature)) {
+            throw "Updater imzasi bos: $sigSource"
+          }
+
+          $cargoToml = Get-Content -Raw -Encoding UTF8 src-tauri/Cargo.toml
+          if ($cargoToml -notmatch '(?m)^version\s*=\s*"([^"]+)"') {
+            throw "src-tauri/Cargo.toml version bulunamadi."
+          }
+          $version = $Matches[1]
+
+          $latestJson = @{
+            version = "v$version"
+            pub_date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            platforms = @{
+              "windows-x86_64" = @{
+                signature = $signature
+                url = "https://github.com/Toxpox/GSB-WiFi-AutoLogin/releases/download/v$version/GSB_WiFi_AutoLogin_setup.exe"
+              }
+            }
+          } | ConvertTo-Json -Depth 4
+
+          # PowerShell 5.1: Set-Content/Out-File UTF-16 BOM yazar; updater
+          # BOM'suz UTF-8 bekler.
+          [IO.File]::WriteAllText("$PWD/latest.json", $latestJson, [Text.UTF8Encoding]::new($false))
+
           $files = @(
             "GSB_WiFi_AutoLogin_portable.exe",
-            "GSB_WiFi_AutoLogin_setup.exe"
+            "GSB_WiFi_AutoLogin_setup.exe",
+            "latest.json"
           )
 
           $hashLines = foreach ($file in $files) {
@@ -155,4 +192,5 @@ jobs:
           files: |
             GSB_WiFi_AutoLogin_portable.exe
             GSB_WiFi_AutoLogin_setup.exe
+            latest.json
             SHA256SUMS.txt

@@ -2,11 +2,21 @@
 const logSatirlar = [];
 const MAX_LOG_SATIR = 300;
 
-function logYaz(mesaj, tip) {
+// sadeceUi=true: satir dosyaya YAZILMAZ (backend kaynakli olaylar dosyaya
+// backend tarafindan yazilir; cift kayit olusmasin).
+function logYaz(mesaj, tip, sadeceUi) {
     const satir = { mesaj: mesaj || '', tip: tip || '' };
     logSatirlar.push(satir);
     if (logSatirlar.length > MAX_LOG_SATIR) {
         logSatirlar.shift();
+    }
+
+    if (!sadeceUi) {
+        // Dosyaya yazim arka planda; hata UI'yi asla bloklamaz.
+        try {
+            invoke('log_satiri_yaz', { satir: satir.mesaj, tip: satir.tip || null })
+                .catch(function() {});
+        } catch (_) {}
     }
 
     const alan = document.getElementById('log-icerik');
@@ -50,4 +60,9 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('log-btn-hosgeldin').addEventListener('click', logPanelAcKapa);
     document.getElementById('log-kapat').addEventListener('click', logPanelAcKapa);
     document.getElementById('log-temizle').addEventListener('click', logTemizle);
+    document.getElementById('log-klasor').addEventListener('click', function() {
+        invoke('log_klasoru_ac').catch(function(e) {
+            logYaz('Log klasörü açılamadı: ' + String(e), 'uyari');
+        });
+    });
 });

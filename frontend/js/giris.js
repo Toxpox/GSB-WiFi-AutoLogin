@@ -8,14 +8,20 @@ function girisBtnYukleniyor(btn, yukleniyor) {
     btn.innerHTML = yukleniyor ? BAGLANIYOR_YAZI : BAGLAN_YAZI;
 }
 
-async function girisBaslat() {
+// otomatik=true: acilis/tepsi kaynakli giris — hata durumunda modal acmaz,
+// yalnizca log + durum cizgisi gunceller. Maksimum cihaz sorusu her zaman sorulur.
+async function girisBaslat(otomatik) {
     if (girisAktif) return;
 
     const kullanici = document.getElementById('kullanici').value.trim();
     const sifre = document.getElementById('sifre').value;
 
     if (!kullanici || !sifre) {
-        await modalUyari('Eksik Bilgi', 'Kullanıcı adı ve şifre gerekli.');
+        if (otomatik) {
+            logYaz('Otomatik giriş: kullanıcı adı ve şifre eksik.', 'uyari');
+        } else {
+            await modalUyari('Eksik Bilgi', 'Kullanıcı adı ve şifre gerekli.');
+        }
         return;
     }
 
@@ -66,11 +72,11 @@ async function girisBaslat() {
     } catch (hataJson) {
         try {
             const hata = JSON.parse(hataJson);
-            await hataIsle(hata, kullanici, sifre);
+            await hataIsle(hata, kullanici, sifre, otomatik);
         } catch (_) {
             logYaz('Hata: ' + hataJson, 'hata');
             durumGuncelle('Hata', 'hata');
-            await modalUyari('Hata', String(hataJson));
+            if (!otomatik) await modalUyari('Hata', String(hataJson));
         }
     } finally {
         girisAktif = false;
@@ -78,26 +84,28 @@ async function girisBaslat() {
     }
 }
 
-async function hataIsle(hata, kullanici, sifre) {
+async function hataIsle(hata, kullanici, sifre, otomatik) {
     switch (hata.tip) {
         case 'MaksimumCihaz':
+            // Otomatik giriste de kullanici onayina birakilir; baska cihazin
+            // baglantisi sessizce dusurulmez.
             await maksimumCihazSor(hata.detay.cihaz_bilgisi, kullanici, sifre);
             break;
         case 'GirisBasarisiz':
             logYaz(hata.detay.kullanici_mesaji, 'hata');
             durumGuncelle('Giriş Başarısız', 'hata');
-            await modalUyari('Giriş Başarısız', hata.detay.kullanici_mesaji);
+            if (!otomatik) await modalUyari('Giriş Başarısız', hata.detay.kullanici_mesaji);
             break;
         case 'ZamanAsimi':
             logYaz('Sunucu yanıtlamıyor', 'hata');
             durumGuncelle('Hata', 'hata');
-            await modalUyari('Zaman Aşımı', 'Sunucu yanıtlamıyor. Ağ yoğunluğu nedeniyle gecikmeli olabilir.');
+            if (!otomatik) await modalUyari('Zaman Aşımı', 'Sunucu yanıtlamıyor. Ağ yoğunluğu nedeniyle gecikmeli olabilir.');
             break;
         default:
             var mesaj = (hata.detay && hata.detay.kullanici_mesaji) || 'Bilinmeyen hata';
             logYaz(mesaj, 'hata');
             durumGuncelle('Hata', 'hata');
-            await modalUyari('Hata', mesaj);
+            if (!otomatik) await modalUyari('Hata', mesaj);
     }
 }
 
@@ -145,9 +153,12 @@ async function maksimumCihazSor(bilgi, kullanici, sifre) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('giris-btn').addEventListener('click', girisBaslat);
+    // Not: dogrudan girisBaslat baglanirsa MouseEvent "otomatik" parametresine sizar.
+    document.getElementById('giris-btn').addEventListener('click', function() {
+        girisBaslat(false);
+    });
     document.getElementById('sifre').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') girisBaslat();
+        if (e.key === 'Enter') girisBaslat(false);
     });
     document.getElementById('kullanici').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') document.getElementById('sifre').focus();

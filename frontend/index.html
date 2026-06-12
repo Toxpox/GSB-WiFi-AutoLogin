@@ -11,6 +11,14 @@
     <link rel="stylesheet" href="css/log.css">
 </head>
 <body>
+    <!-- Guncelleme bildirimi: her iki ekranin da ustunde, gizli baslar -->
+    <button id="guncelleme-bar" class="guncelleme-bar gizli" type="button">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 19V5"/><path d="M5 12l7-7 7 7"/>
+        </svg>
+        <span id="guncelleme-bar-yazi">Yeni sürüm mevcut</span>
+    </button>
+
     <!-- ============ Login screen ============ -->
     <div id="ekran-giris" class="ekran aktif">
         <div class="brand">
@@ -24,6 +32,12 @@
             </span>
             <span class="brand-name">GSB WiFi AutoLogin</span>
             <div class="brand-actions">
+                <button id="ayar-btn" class="ikon-link" type="button" title="Ayarlar" aria-label="Ayarlar">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 9 19.35a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.65 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.01a1.7 1.7 0 0 0 1.02-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.01a1.7 1.7 0 0 0 1.55 1.02H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1.03Z"/>
+                    </svg>
+                </button>
                 <button class="ikon-link js-github-btn" type="button" title="GitHub" aria-label="GitHub deposunu aç">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.18-3.37-1.18-.46-1.16-1.12-1.47-1.12-1.47-.92-.63.07-.62.07-.62 1.02.07 1.55 1.05 1.55 1.05.9 1.55 2.37 1.1 2.95.84.09-.66.35-1.1.64-1.36-2.22-.25-4.56-1.11-4.56-4.95 0-1.1.39-1.99 1.03-2.69-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02a9.55 9.55 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.69 0 3.85-2.35 4.7-4.58 4.95.36.31.68.92.68 1.86v2.75c0 .26.18.58.69.48A10 10 0 0 0 12 2Z"/>
@@ -189,6 +203,54 @@
         </div>
     </div>
 
+    <!-- ============ Takma Ad Diyalogu ============ -->
+    <div id="takma-ad-overlay" class="modal-overlay gizli">
+        <div class="modal-kutu">
+            <h2 class="modal-baslik">Profili Adlandır</h2>
+            <p class="modal-mesaj">Bu profil için bir takma ad girin. Boş bırakırsanız takma ad kaldırılır.</p>
+            <div class="input-wrap takma-ad-girdi">
+                <input id="takma-ad-input" class="giris-alani" maxlength="24" placeholder="ör. Ali" autocomplete="off">
+            </div>
+            <div class="modal-butonlar">
+                <button id="takma-ad-iptal" class="modal-btn-iptal" type="button">Vazgeç</button>
+                <button id="takma-ad-kaydet" class="modal-btn-ana" type="button">Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ Ayarlar Paneli ============ -->
+    <div id="ayar-overlay" class="modal-overlay gizli">
+        <div class="modal-kutu">
+            <h2 class="modal-baslik">Ayarlar</h2>
+            <div class="ayar-listesi">
+                <label class="ayar-satir">
+                    <input type="checkbox" id="ayar-otomatik-giris">
+                    <span>Açılışta otomatik bağlan</span>
+                </label>
+                <label class="ayar-satir">
+                    <input type="checkbox" id="ayar-tepsiye-kucul">
+                    <span>Kapatınca sistem tepsisine küçül</span>
+                </label>
+                <label class="ayar-satir">
+                    <input type="checkbox" id="ayar-baslangic">
+                    <span>Windows başlangıcında çalıştır</span>
+                </label>
+                <label class="ayar-satir">
+                    <input type="checkbox" id="ayar-yeniden-baglan">
+                    <span>12 saatte bir oturumu kontrol et</span>
+                </label>
+                <label class="ayar-satir">
+                    <input type="checkbox" id="ayar-kota-bildirim">
+                    <span>Kota bildirimleri (%20 altı ve dolunca)</span>
+                </label>
+            </div>
+            <div class="modal-butonlar">
+                <button id="ayar-iptal" class="modal-btn-iptal" type="button">Vazgeç</button>
+                <button id="ayar-kaydet" class="modal-btn-ana" type="button">Kaydet</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ============ Log Panel (bottom sheet) ============ -->
     <div id="log-panel" class="log-panel">
         <div class="log-baslik">
@@ -201,7 +263,8 @@
                 Sistem Günlüğü
             </span>
             <div class="log-butonlar">
-                <button id="log-temizle" class="btn-log-kucuk" type="button">Temizle</button>
+                <button id="log-klasor" class="btn-log-kucuk" type="button" title="Log dosyasının klasörünü aç">Klasörü Aç</button>
+                <button id="log-temizle" class="btn-log-kucuk" type="button" title="Ekrandaki kaydı temizler, dosyaya dokunmaz">Temizle</button>
                 <button id="log-kapat" class="btn-log-kucuk" type="button">Kapat</button>
             </div>
         </div>

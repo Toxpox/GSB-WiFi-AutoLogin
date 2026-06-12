@@ -120,31 +120,34 @@ function hosgeldinGoster(bilgi) {
     ekranGoster('ekran-hosgeldin');
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('cikis-btn').addEventListener('click', async function() {
-        logYaz('Çıkış yapılıyor…', 'uyari');
+// Tepsi menusunden de cagrilir (app.js: tepsiOlaylariniDinle).
+async function cikisYap() {
+    logYaz('Çıkış yapılıyor…', 'uyari');
 
-        var cikisTamam = false;
+    var cikisTamam = false;
 
-        try {
-            var basarili = await invoke('cikis');
-            if (basarili) {
-                cikisTamam = true;
-                logYaz('Oturum sonlandırıldı', 'basarili');
-            } else {
-                logYaz('Çıkış isteği gönderilemedi', 'uyari');
-            }
-        } catch (_) {
+    try {
+        var basarili = await invoke('cikis');
+        if (basarili) {
+            cikisTamam = true;
+            logYaz('Oturum sonlandırıldı', 'basarili');
+        } else {
             logYaz('Çıkış isteği gönderilemedi', 'uyari');
         }
+    } catch (_) {
+        logYaz('Çıkış isteği gönderilemedi', 'uyari');
+    }
 
-        if (!cikisTamam) {
-            await modalUyari('Çıkış Başarısız', 'Çıkış isteği tamamlanamadı. GSB WiFi ağına bağlı olduğunuzdan emin olun.');
-            return;
-        }
+    if (!cikisTamam) {
+        await modalUyari('Çıkış Başarısız', 'Çıkış isteği tamamlanamadı. GSB WiFi ağına bağlı olduğunuzdan emin olun.');
+        return;
+    }
 
-        ekranGoster('ekran-giris');
-        durumGuncelle('Hazır', 'bekle');
-        document.getElementById('sifre').value = '';
-    });
+    ekranGoster('ekran-giris');
+    durumGuncelle('Hazır', 'bekle');
+    document.getElementById('sifre').value = '';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('cikis-btn').addEventListener('click', cikisYap);
 });

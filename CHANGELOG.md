@@ -5,6 +5,23 @@ Bu projedeki dikkate değer değişiklikler bu dosyada belgelenir.
 Biçim [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) standardını,
 sürümleme [Semantic Versioning](https://semver.org/lang/tr/) kurallarını takip eder.
 
+## [1.8.0] - 2026-06-12
+
+### Eklendi
+- **Sistem tepsisi:** Tepsi ikonu ve menüsü (Bağlan, Çıkış Yap, Pencereyi Göster, Uygulamadan Çık); pencere kapatılınca tepsiye küçülme (ayarlardan kapatılabilir); tepsi ipucunda bağlantı durumu.
+- **Ayarlar paneli:** Otomatik giriş, tepsiye küçülme, Windows başlangıcında çalıştırma ve periyodik oturum kontrolü için kalıcı ayarlar (`settings.json`).
+- **Otomatik giriş:** Açılışta aktif profille kendiliğinden bağlanma; hata durumunda modal yerine sessiz log akışı. Maksimum cihaz durumu her zaman kullanıcıya sorulur.
+- **Windows başlangıcında çalıştırma:** `tauri-plugin-autostart` ile; uygulama `--sessiz` bayrağıyla pencere açmadan tepsiden başlar.
+- **Otomatik yeniden bağlanma:** 12 saatte bir oturum canlılık kontrolü (Windows NCSI ucu); oturum düştüyse son kimlik bilgileriyle otomatik yeniden giriş. Çıkış yapılınca devre dışı kalır.
+- **GSB ağı algılama:** Açılışta portal erişilebilirlik kontrolü; GSB ağında değilken log uyarısı, otomatik girişin ve yeniden bağlanmanın gereksiz denemeleri atlaması.
+- **Kota bildirimleri:** Kalan kota %20'nin altına düşünce veya kota dolunca Windows bildirimi; aynı eşik için tekrar bildirim gönderilmez, kota yenilenince sıfırlanır. Başarısız otomatik yeniden bağlanmada da bildirim gönderilir. Ayarlardan kapatılabilir.
+- **Profil isimlendirme:** Kayıtlı profillere takma ad verme (token üzerindeki kalem butonu); görünen ad takma ad, tooltip'te maskeli TC korunur. TC kimlik numarası takma ad olarak kabul edilmez; takma ad girişlerde korunur.
+- **Uygulama içi otomatik güncelleme:** Açılışta arka planda güncelleme kontrolü (`tauri-plugin-updater`, imzalı `latest.json`); güncelleme varsa pencerenin üstünde yeşil bir bar belirir, tıklanınca indirme ilerlemesi gösterilir ve kurulum otomatik tamamlanıp uygulama yeniden başlar. Portable kullanımda bar GitHub release sayfasını açar.
+- **Kalıcı sistem günlüğü:** Log satırları `logs/uygulama.log` dosyasına da yazılır (1 MB üstünde tek yedekli rotasyon); log panelinden "Klasörü Aç" ile erişilir. Backend olayları tepsideyken de dosyaya işlenir.
+
+### Güvenlik
+- Profil seçimi log satırındaki bir fallback'in ham TC kimlik numarasını gösterebilmesi düzeltildi (maskeli ada düşürüldü).
+
 ## [1.7.2] - 2026-06-10
 
 ### Güvenlik
@@ -51,6 +68,7 @@ sürümleme [Semantic Versioning](https://semver.org/lang/tr/) kurallarını tak
 
 - İlk kararlı sürüm.
 
+[1.8.0]: https://github.com/Toxpox/GSB-WiFi-AutoLogin/compare/v1.7.2...v1.8.0
 [1.7.2]: https://github.com/Toxpox/GSB-WiFi-AutoLogin/compare/v1.7.0...v1.7.2
 [1.7.0]: https://github.com/Toxpox/GSB-WiFi-AutoLogin/compare/v1.6.1...v1.7.0
 [1.6.1]: https://github.com/Toxpox/GSB-WiFi-AutoLogin/compare/v1.6.0...v1.6.1

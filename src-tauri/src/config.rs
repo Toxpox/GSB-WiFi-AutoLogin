@@ -15,12 +15,74 @@ pub const INDEX_URL: &str = "https://wifi.gsb.gov.tr/index.html";
 pub const LOGOUT_URL: &str = "https://wifi.gsb.gov.tr/logout";
 pub const CIKIS_SON_URL: &str = "https://wifi.gsb.gov.tr/cikisSon.html?logout=1";
 pub const TIMEOUT_SECS: u64 = 15;
+// Yeniden baglanma kontrolu: oturumun dustugunu anlamak icin Windows'un
+// kendi NCSI ucu kullanilir; captive portal araya girerse beklenen govde donmez.
+pub const YENIDEN_BAGLAN_ARALIK_SAAT: u64 = 12;
+pub const BAGLANTI_TEST_URL: &str = "http://www.msftconnecttest.com/connecttest.txt";
+pub const BAGLANTI_TEST_BEKLENEN: &str = "Microsoft Connect Test";
 pub const MAX_DENEME: u32 = 3;
 pub const BACKOFF_TABANI: f64 = 2.0;
 pub const BACKOFF_CARPAN: f64 = 3.0;
 pub const USER_AGENT: &str = concat!("GSB-WiFi-AutoLogin/", env!("CARGO_PKG_VERSION"));
 pub const PORTAL_USER_AGENT: &str =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36";
+
+/// Kullanici tarafindan degistirilebilen uygulama ayarlari (settings.json).
+/// Profil deposundan ayri tutulur; eksik alanlar varsayilana duser.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct UygulamaAyarlari {
+    pub otomatik_giris: bool,
+    pub tepsiye_kucul: bool,
+    pub baslangicta_calis: bool,
+    pub yeniden_baglan: bool,
+    pub kota_bildirim: bool,
+}
+
+impl Default for UygulamaAyarlari {
+    fn default() -> Self {
+        Self {
+            otomatik_giris: false,
+            tepsiye_kucul: true,
+            baslangicta_calis: false,
+            yeniden_baglan: true,
+            kota_bildirim: true,
+        }
+    }
+}
+
+/// Ayni kota esigi icin tekrar tekrar bildirim gondermemek icin kalici durum.
+/// Kota yenilenip esigin ustune cikinca sifirlanir.
+#[derive(Serialize, Deserialize, Clone, Copy, Default, PartialEq, Eq, Debug)]
+#[serde(default)]
+pub struct BildirimDurumu {
+    pub dusuk_bildirildi: bool,
+    pub doldu_bildirildi: bool,
+}
+
+fn bildirim_durumu_yolu() -> Result<PathBuf, GSBError> {
+    let dizin = ayar_dizini();
+    fs::create_dir_all(&dizin).map_err(|e| ayar_hatasi(e, "Ayar klasoru olusturulamadi."))?;
+    Ok(dizin.join("bildirim_durumu.json"))
+}
+
+pub fn bildirim_durumu_oku() -> BildirimDurumu {
+    bildirim_durumu_yolu()
+        .ok()
+        .and_then(|yol| fs::read_to_string(yol).ok())
+        .and_then(|icerik| serde_json::from_str(&icerik).ok())
+        .unwrap_or_default()
+}
+
+pub fn bildirim_durumu_yaz(durum: &BildirimDurumu) -> Result<(), GSBError> {
+    let json = serde_json::to_string_pretty(durum)
+        .map_err(|e| ayar_hatasi(e, "Bildirim durumu hazirlanamadi."))?;
+    atomik_yaz(
+        &bildirim_durumu_yolu()?,
+        &json,
+        "Bildirim durumu kaydedilemedi.",
+    )
+}
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct KayitliKullanici {
@@ -41,6 +103,10 @@ pub struct KayitliProfil {
     pub sifreli: bool,
     #[serde(default)]
     pub son_kullanim: u64,
+    /// Kullanicinin verdigi takma ad; duz metin saklanir (kimlik bilgisi
+    /// icermez, TC girisi takma_ad_dogrula ile engellenir).
+    #[serde(default)]
+    pub takma_ad: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -59,6 +125,7 @@ pub struct KullaniciProfiliOzet {
     pub masked_username: String,
     pub aktif: bool,
     pub son_kullanim: u64,
+    pub takma_ad: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -85,6 +152,10 @@ fn ayar_dizini() -> PathBuf {
         .or_else(|| std::env::current_dir().ok())
         .unwrap_or_else(|| PathBuf::from("."))
         .join("GSB WiFi AutoLogin")
+}
+
+pub fn log_dizini() -> PathBuf {
+    ayar_dizini().join("logs")
 }
 
 fn ayar_yolu() -> Result<PathBuf, GSBError> {
@@ -123,6 +194,7 @@ pub fn kullanici_kaydet(k: &str, sifre: &str) -> Result<(), GSBError> {
             .map_err(|e| ayar_hatasi(e, "Kullanici bilgileri sifrelenemedi."))?,
         sifreli: true,
         son_kullanim,
+        takma_ad: None, // mevcut profil guncellenirken profili_birlestir korur
     };
 
     if let Some(mevcut) = depo
@@ -130,7 +202,7 @@ pub fn kullanici_kaydet(k: &str, sifre: &str) -> Result<(), GSBError> {
         .iter_mut()
         .find(|p| p.id == id || profil_kullanici_adi(p).as_deref() == Some(k))
     {
-        *mevcut = yeni_profil;
+        profili_birlestir(mevcut, yeni_profil);
     } else {
         depo.profiles.push(yeni_profil);
     }
@@ -141,9 +213,55 @@ pub fn kullanici_kaydet(k: &str, sifre: &str) -> Result<(), GSBError> {
     profil_deposu_yaz(&depo)
 }
 
+/// Yeni giris kaydi mevcut profili degistirirken kullanicinin verdigi
+/// takma adi korur; kullanici_kaydet her basarili giriste profili sifirdan
+/// kurdugu icin bu birlestirme olmadan takma ad ilk giriste silinirdi.
+fn profili_birlestir(mevcut: &mut KayitliProfil, mut yeni: KayitliProfil) {
+    yeni.takma_ad = mevcut.takma_ad.take();
+    *mevcut = yeni;
+}
+
 pub fn profilleri_listele() -> Vec<KullaniciProfiliOzet> {
     let depo = profil_deposu_oku();
     profil_ozetleri(&depo)
+}
+
+fn takma_ad_dogrula(ad: &str) -> Result<Option<String>, GSBError> {
+    let ad = ad.trim();
+    if ad.is_empty() {
+        return Ok(None); // bos ad = takma adi kaldir
+    }
+    if ad.chars().count() > 24 {
+        return Err(ayar_hatasi(
+            "Takma ad cok uzun",
+            "Takma ad en fazla 24 karakter olabilir.",
+        ));
+    }
+    // Kullanici yanlislikla TC'sini yazmasin; takma ad duz metin saklaniyor.
+    if ad.len() == 11 && ad.chars().all(|c| c.is_ascii_digit()) {
+        return Err(ayar_hatasi(
+            "Takma ad TC olamaz",
+            "TC kimlik numarasi takma ad olarak kullanilamaz.",
+        ));
+    }
+    Ok(Some(ad.to_string()))
+}
+
+pub fn profil_takma_ad_ayarla(
+    id: &str,
+    takma_ad: &str,
+) -> Result<Vec<KullaniciProfiliOzet>, GSBError> {
+    let yeni_ad = takma_ad_dogrula(takma_ad)?;
+    let mut depo = profil_deposu_oku();
+    let Some(profil) = depo.profiles.iter_mut().find(|p| p.id == id) else {
+        return Err(ayar_hatasi(
+            "Profil bulunamadi",
+            "Secilen profil bulunamadi.",
+        ));
+    };
+    profil.takma_ad = yeni_ad;
+    profil_deposu_yaz(&depo)?;
+    Ok(profil_ozetleri(&depo))
 }
 
 pub fn profil_yukle(id: &str) -> Result<(String, String), GSBError> {
@@ -204,16 +322,20 @@ fn profil_deposu_oku() -> ProfilAyarlari {
     }
 }
 
+/// Yazma sirasinda kesinti dosyayi bozmasin diye once gecici dosyaya
+/// yazip uzerine tasir.
+fn atomik_yaz(yol: &PathBuf, icerik: &str, hata_mesaji: &str) -> Result<(), GSBError> {
+    let gecici = yol.with_extension("json.tmp");
+    fs::write(&gecici, icerik).map_err(|e| ayar_hatasi(e, hata_mesaji))?;
+    fs::rename(&gecici, yol).map_err(|e| ayar_hatasi(e, hata_mesaji))?;
+    Ok(())
+}
+
 fn profil_deposu_yaz(depo: &ProfilAyarlari) -> Result<(), GSBError> {
     let json = serde_json::to_string_pretty(depo)
         .map_err(|e| ayar_hatasi(e, "Ayar dosyasi hazirlanamadi."))?;
     let yol = ayar_yolu()?;
-
-    // Yazma sirasinda kesinti dosyayi bozmasin diye once gecici dosyaya
-    // yazip uzerine tasiyoruz.
-    let gecici = yol.with_extension("json.tmp");
-    fs::write(&gecici, json).map_err(|e| ayar_hatasi(e, "Kullanici bilgileri kaydedilemedi."))?;
-    fs::rename(&gecici, &yol).map_err(|e| ayar_hatasi(e, "Kullanici bilgileri kaydedilemedi."))?;
+    atomik_yaz(&yol, &json, "Kullanici bilgileri kaydedilemedi.")?;
 
     // Yeni konuma basariyla yazildiysa exe yanindaki eski dosya artik gereksiz.
     let eski = eski_ayar_yolu();
@@ -221,6 +343,26 @@ fn profil_deposu_yaz(depo: &ProfilAyarlari) -> Result<(), GSBError> {
         let _ = fs::remove_file(eski);
     }
     Ok(())
+}
+
+fn ayar_dosyasi_yolu() -> Result<PathBuf, GSBError> {
+    let dizin = ayar_dizini();
+    fs::create_dir_all(&dizin).map_err(|e| ayar_hatasi(e, "Ayar klasoru olusturulamadi."))?;
+    Ok(dizin.join("settings.json"))
+}
+
+pub fn ayarlari_oku() -> UygulamaAyarlari {
+    ayar_dosyasi_yolu()
+        .ok()
+        .and_then(|yol| fs::read_to_string(yol).ok())
+        .and_then(|icerik| serde_json::from_str(&icerik).ok())
+        .unwrap_or_default()
+}
+
+pub fn ayarlari_yaz(ayarlar: &UygulamaAyarlari) -> Result<(), GSBError> {
+    let json = serde_json::to_string_pretty(ayarlar)
+        .map_err(|e| ayar_hatasi(e, "Ayarlar hazirlanamadi."))?;
+    atomik_yaz(&ayar_dosyasi_yolu()?, &json, "Ayarlar kaydedilemedi.")
 }
 
 fn tekil_kayittan_depo(veri: KayitliKullanici) -> ProfilAyarlari {
@@ -248,6 +390,7 @@ fn tekil_kayittan_depo(veri: KayitliKullanici) -> ProfilAyarlari {
             password: veri.password,
             sifreli: veri.sifreli,
             son_kullanim: 0,
+            takma_ad: None,
         }],
     }
 }
@@ -294,6 +437,7 @@ fn profil_ozetleri(depo: &ProfilAyarlari) -> Vec<KullaniciProfiliOzet> {
                 masked_username: tc_maskele(&username),
                 aktif: aktif_id == Some(profil.id.as_str()),
                 son_kullanim: profil.son_kullanim,
+                takma_ad: profil.takma_ad.clone(),
             })
         })
         .collect()
@@ -370,11 +514,73 @@ mod tests {
                 password: "Z2VjZXJzaXotc2lmcmVsaS12ZXJp".into(),
                 sifreli: true,
                 son_kullanim: 0,
+                takma_ad: None,
             }],
         };
 
         assert!(profil_ozetleri(&depo).is_empty());
         assert_eq!(profil_coz(&depo.profiles[0]), None);
+    }
+
+    #[test]
+    fn takma_adsiz_eski_json_geriye_uyumlu() {
+        let eski_json = r#"{
+            "version": 2,
+            "aktif_id": "abc",
+            "profiles": [{
+                "id": "abc",
+                "username": "12345678901",
+                "password": "secret",
+                "sifreli": false,
+                "son_kullanim": 5
+            }]
+        }"#;
+
+        let depo: ProfilAyarlari = serde_json::from_str(eski_json).unwrap();
+        assert_eq!(depo.profiles.len(), 1);
+        assert_eq!(depo.profiles[0].takma_ad, None);
+
+        let ozetler = profil_ozetleri(&depo);
+        assert_eq!(ozetler[0].takma_ad, None);
+    }
+
+    #[test]
+    fn birlestirme_takma_adi_korur() {
+        let mut mevcut = KayitliProfil {
+            id: "abc".into(),
+            username: "eski".into(),
+            password: "eski".into(),
+            sifreli: false,
+            son_kullanim: 1,
+            takma_ad: Some("Ali".into()),
+        };
+        let yeni = KayitliProfil {
+            id: "abc".into(),
+            username: "yeni".into(),
+            password: "yeni".into(),
+            sifreli: false,
+            son_kullanim: 2,
+            takma_ad: None,
+        };
+
+        profili_birlestir(&mut mevcut, yeni);
+
+        assert_eq!(mevcut.takma_ad.as_deref(), Some("Ali"));
+        assert_eq!(mevcut.username, "yeni");
+        assert_eq!(mevcut.son_kullanim, 2);
+    }
+
+    #[test]
+    fn takma_ad_dogrulanir() {
+        assert_eq!(takma_ad_dogrula("").unwrap(), None);
+        assert_eq!(takma_ad_dogrula("   ").unwrap(), None);
+        assert_eq!(takma_ad_dogrula(" Ali ").unwrap().as_deref(), Some("Ali"));
+        // 24 karakter ustu reddedilir
+        assert!(takma_ad_dogrula("cok uzun bir takma ad denemesi").is_err());
+        // 11 haneli salt rakam (TC benzeri) reddedilir
+        assert!(takma_ad_dogrula("12345678901").is_err());
+        // 11 haneli ama rakam degilse kabul
+        assert!(takma_ad_dogrula("Kardesim 01").is_ok());
     }
 
     #[test]

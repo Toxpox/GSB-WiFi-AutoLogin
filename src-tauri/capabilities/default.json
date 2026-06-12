@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Ana pencere icin cekirdek izinler (event dinleme dahil)",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

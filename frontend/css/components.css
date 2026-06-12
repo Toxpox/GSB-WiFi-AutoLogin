@@ -245,3 +245,66 @@
 
 /* ============ Utility ============ */
 .gizli { display: none !important; }
+
+/* ---- Ayarlar paneli ---- */
+.ayar-listesi {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 16px 0 20px;
+    text-align: left;
+}
+
+.ayar-satir {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--beyaz);
+    cursor: pointer;
+}
+
+.ayar-satir input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--mor);
+    cursor: pointer;
+}
+
+/* ---- Takma ad diyalogu ---- */
+.takma-ad-girdi {
+    margin: 14px 0 6px;
+    text-align: left;
+}
+
+/* ---- Guncelleme bari ---- */
+.guncelleme-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    border-bottom: 1px solid rgba(16, 185, 129, 0.35);
+    background: linear-gradient(180deg, rgba(16, 185, 129, 0.22), rgba(16, 185, 129, 0.14));
+    color: var(--yesil-acik);
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.guncelleme-bar:hover:not(:disabled) {
+    background: linear-gradient(180deg, rgba(16, 185, 129, 0.3), rgba(16, 185, 129, 0.2));
+}
+
+.guncelleme-bar:disabled {
+    cursor: default;
+    opacity: 0.8;
+}
+
+.guncelleme-bar.gizli {
+    display: none;
+}

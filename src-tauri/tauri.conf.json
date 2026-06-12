@@ -8,19 +8,33 @@
     "withGlobalTauri": true,
     "windows": [
       {
+        "label": "main",
         "title": "GSB WiFi AutoLogin",
         "width": 420,
         "height": 680,
         "resizable": false,
-        "center": true
+        "center": true,
+        "visible": false
       }
     ],
     "security": {
       "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset:"
     }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFDMjI4QTg4NkZDQkQwMjcKUldRbjBNdHZpSW9pck13RHFQQjVKWXdObGxDQ3hyOU5HRzY5RS9FTjJBLzJJbTd0K0svaG1BbmQK",
+      "endpoints": [
+        "https://github.com/Toxpox/GSB-WiFi-AutoLogin/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "icon": ["icons/wifi.ico"],
     "targets": ["nsis"],
     "publisher": "Toxpox",
