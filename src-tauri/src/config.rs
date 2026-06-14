@@ -84,6 +84,65 @@ pub fn bildirim_durumu_yaz(durum: &BildirimDurumu) -> Result<(), GSBError> {
     )
 }
 
+/// Gunluk kota anlik goruntusu (kota_gecmisi.json). Her basarili giriste
+/// o gune ait kayit guncellenir; grafik ve tukenme tahmini icin kullanilir.
+#[derive(Serialize, Deserialize, Clone, Default, PartialEq, Debug)]
+pub struct KotaKaydi {
+    /// Yerel tarih, YYYY-MM-DD.
+    pub tarih: String,
+    pub kalan_mb: f64,
+    pub toplam_mb: f64,
+}
+
+const KOTA_GECMIS_MAX_GUN: usize = 90;
+
+fn kota_gecmisi_yolu() -> Result<PathBuf, GSBError> {
+    let dizin = ayar_dizini();
+    fs::create_dir_all(&dizin).map_err(|e| ayar_hatasi(e, "Ayar klasoru olusturulamadi."))?;
+    Ok(dizin.join("kota_gecmisi.json"))
+}
+
+pub fn kota_gecmisi_oku() -> Vec<KotaKaydi> {
+    kota_gecmisi_yolu()
+        .ok()
+        .and_then(|yol| fs::read_to_string(yol).ok())
+        .and_then(|icerik| serde_json::from_str(&icerik).ok())
+        .unwrap_or_default()
+}
+
+/// Bugune ait kaydi ekler/gunceller, tarihe gore siralar ve `max_gun`
+/// kaydi asarsa en eskileri kirpar. Saf fonksiyon (dosya I/O yok) — test edilebilir.
+pub fn kota_gecmisi_birlestir(
+    mut gecmis: Vec<KotaKaydi>,
+    kayit: KotaKaydi,
+    max_gun: usize,
+) -> Vec<KotaKaydi> {
+    if let Some(mevcut) = gecmis.iter_mut().find(|k| k.tarih == kayit.tarih) {
+        mevcut.kalan_mb = kayit.kalan_mb;
+        mevcut.toplam_mb = kayit.toplam_mb;
+    } else {
+        gecmis.push(kayit);
+    }
+    gecmis.sort_by(|a, b| a.tarih.cmp(&b.tarih));
+    let n = gecmis.len();
+    if n > max_gun {
+        gecmis.drain(0..n - max_gun);
+    }
+    gecmis
+}
+
+pub fn kota_gecmisi_kaydet(kalan_mb: f64, toplam_mb: f64, bugun: &str) -> Result<(), GSBError> {
+    let kayit = KotaKaydi {
+        tarih: bugun.to_string(),
+        kalan_mb,
+        toplam_mb,
+    };
+    let gecmis = kota_gecmisi_birlestir(kota_gecmisi_oku(), kayit, KOTA_GECMIS_MAX_GUN);
+    let json = serde_json::to_string_pretty(&gecmis)
+        .map_err(|e| ayar_hatasi(e, "Kota gecmisi hazirlanamadi."))?;
+    atomik_yaz(&kota_gecmisi_yolu()?, &json, "Kota gecmisi kaydedilemedi.")
+}
+
 #[derive(Serialize, Deserialize, Default)]
 pub struct KayitliKullanici {
     pub username: String,
@@ -596,5 +655,35 @@ mod tests {
             profil_id_uret("12345678901"),
             profil_id_uret(" 12345678901 ")
         );
+    }
+
+    #[test]
+    fn kota_gecmisi_ayni_gunu_gunceller_eskiyi_kirpar() {
+        let kayit = |tarih: &str, kalan: f64| KotaKaydi {
+            tarih: tarih.into(),
+            kalan_mb: kalan,
+            toplam_mb: 10240.0,
+        };
+
+        // Ayni gun ikinci kez kaydedilince eklenmez, guncellenir.
+        let g = kota_gecmisi_birlestir(
+            vec![kayit("2026-06-10", 8000.0)],
+            kayit("2026-06-10", 7000.0),
+            90,
+        );
+        assert_eq!(g.len(), 1);
+        assert_eq!(g[0].kalan_mb, 7000.0);
+
+        // Farkli gun eklenir ve tarihe gore siralanir.
+        let g = kota_gecmisi_birlestir(g, kayit("2026-06-09", 9000.0), 90);
+        assert_eq!(g.len(), 2);
+        assert_eq!(g[0].tarih, "2026-06-09");
+        assert_eq!(g[1].tarih, "2026-06-10");
+
+        // max_gun asilinca en eski kayit kirpilir.
+        let g = kota_gecmisi_birlestir(g, kayit("2026-06-11", 6000.0), 2);
+        assert_eq!(g.len(), 2);
+        assert_eq!(g[0].tarih, "2026-06-10");
+        assert_eq!(g[1].tarih, "2026-06-11");
     }
 }

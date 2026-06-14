@@ -1,6 +1,18 @@
 const { invoke } = window.__TAURI__.core;
 
-let VERSION = "1.8.0";
+// Tam ekrana gecisi engelle: pencere sabit boyutludur (420x680). F11 ve HTML
+// Fullscreen API ile tam ekrana gecis bloke edilir.
+window.addEventListener('keydown', function(e) {
+    if (e.key === 'F11') e.preventDefault();
+}, true);
+document.addEventListener('fullscreenchange', function() {
+    if (document.fullscreenElement && document.exitFullscreen) {
+        var p = document.exitFullscreen();
+        if (p && p.catch) p.catch(function() {});
+    }
+});
+
+let VERSION = "1.9.0";
 let GIRIS_URL = "https://wifi.gsb.gov.tr/j_spring_security_check";
 let KAYITLI_PROFILLER = [];
 let SECILI_PROFIL_ID = null;

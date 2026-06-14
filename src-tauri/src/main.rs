@@ -1,6 +1,7 @@
 // GSB WiFi AutoLogin - Rust & Tauri
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod ag_olay;
 mod commands;
 mod config;
 mod crypto;
@@ -85,6 +86,9 @@ fn main() {
             }
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(commands::yeniden_baglanma_dongusu(handle));
+            // Yerel ag-olayi dinleyicisi: IP arayuzu degisince yeniden baglanma
+            // dongusunu aninda uyandirir (Wi-Fi baglandigi an giris denenir).
+            ag_olay::ag_degisikligini_dinle(app.state::<AppState>().ag_olay.clone());
             Ok(())
         })
         .on_window_event(|pencere, olay| {
@@ -98,6 +102,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::giris,
             commands::cikis,
+            commands::bilgi_yenile,
             commands::kayitli_kullanici,
             commands::profilleri_listele,
             commands::profil_yukle,
@@ -116,6 +121,8 @@ fn main() {
             commands::profil_takma_ad_ayarla,
             commands::log_satiri_yaz,
             commands::log_klasoru_ac,
+            commands::kota_gecmisi_al,
+            commands::tani_calistir,
         ])
         .run(tauri::generate_context!())
         .expect("Uygulama baslatilirken hata olustu");

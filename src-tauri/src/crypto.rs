@@ -48,10 +48,28 @@ fn eski_anahtar() -> &'static [u8; 32] {
     })
 }
 
+/// v3 (Windows DPAPI) kayitlari bu onekle isaretlenir; onek'siz kayitlar eski
+/// AES-GCM (v2/v1) formatidir ve geriye donuk olarak hala cozulur.
+const DPAPI_ONEK: &str = "v3:";
+
 pub fn sifrele(metin: &str) -> Result<String, String> {
     if metin.is_empty() {
         return Ok(String::new());
     }
+    // Windows'ta tercih: DPAPI (CryptProtectData) — anahtar isletim sistemi
+    // tarafindan oturum/kullaniciya baglanir; makine adi+kullanici adindan
+    // turetilen (yani yeniden uretilebilen) PBKDF2 anahtarindan daha guclu.
+    // DPAPI kullanilamazsa AES-GCM v2'ye duser.
+    #[cfg(windows)]
+    {
+        if let Ok(korunan) = dpapi::koru(metin.as_bytes()) {
+            return Ok(format!("{}{}", DPAPI_ONEK, STANDARD.encode(&korunan)));
+        }
+    }
+    aes_sifrele(metin)
+}
+
+fn aes_sifrele(metin: &str) -> Result<String, String> {
     let cipher = Aes256Gcm::new_from_slice(anahtar()).map_err(|e| e.to_string())?;
     let nonce_bytes: [u8; 12] = rand::random();
     let nonce = Nonce::from_slice(&nonce_bytes);
@@ -79,7 +97,101 @@ pub fn coz(sifreli: &str) -> Result<String, String> {
     if sifreli.is_empty() {
         return Ok(String::new());
     }
+    // v3 (DPAPI) kaydi: onek'i ayikla, base64 coz, DPAPI ile ac.
+    if let Some(b64) = sifreli.strip_prefix(DPAPI_ONEK) {
+        #[cfg(windows)]
+        {
+            let ham = STANDARD.decode(b64).map_err(|e| e.to_string())?;
+            let acik = dpapi::coz(&ham)?;
+            return String::from_utf8(acik).map_err(|e| e.to_string());
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = b64;
+            return Err("DPAPI ile sifrelenmis kayit bu platformda cozulemez".into());
+        }
+    }
+    // Eski (onek'siz) AES-GCM kayitlari: once v2 anahtari, sonra v1 fallback.
     coz_ile(anahtar(), sifreli).or_else(|_| coz_ile(eski_anahtar(), sifreli))
+}
+
+/// Windows Veri Koruma API'si (DPAPI) sarmalayicisi. Kimlik bilgisini oturum
+/// acan Windows kullanicisina baglar; cozme yalnizca ayni kullanici hesabinda
+/// mumkundur. Uygulamaya ozgu entropi ile baglanir.
+#[cfg(windows)]
+mod dpapi {
+    use windows::core::PCWSTR;
+    use windows::Win32::Foundation::{LocalFree, HLOCAL};
+    use windows::Win32::Security::Cryptography::{
+        CryptProtectData, CryptUnprotectData, CRYPTPROTECT_UI_FORBIDDEN, CRYPT_INTEGER_BLOB,
+    };
+
+    const ENTROPI: &[u8] = b"gsb-wifi-autologin:v3:dpapi";
+
+    fn blob(veri: &[u8]) -> CRYPT_INTEGER_BLOB {
+        CRYPT_INTEGER_BLOB {
+            cbData: veri.len() as u32,
+            pbData: veri.as_ptr() as *mut u8,
+        }
+    }
+
+    fn bos_blob() -> CRYPT_INTEGER_BLOB {
+        CRYPT_INTEGER_BLOB {
+            cbData: 0,
+            pbData: std::ptr::null_mut(),
+        }
+    }
+
+    /// Cikti blob'unu kopyalar ve API'nin ayirdigi bellegi LocalFree ile birakir.
+    unsafe fn cikti_al(cikis: &CRYPT_INTEGER_BLOB) -> Vec<u8> {
+        if cikis.pbData.is_null() || cikis.cbData == 0 {
+            return Vec::new();
+        }
+        let dilim = std::slice::from_raw_parts(cikis.pbData, cikis.cbData as usize);
+        let sonuc = dilim.to_vec();
+        let _ = LocalFree(HLOCAL(cikis.pbData as *mut _));
+        sonuc
+    }
+
+    pub fn koru(veri: &[u8]) -> Result<Vec<u8>, String> {
+        let entropi = ENTROPI.to_vec();
+        unsafe {
+            let giris = blob(veri);
+            let entropi_blob = blob(&entropi);
+            let mut cikis = bos_blob();
+            CryptProtectData(
+                &giris,
+                PCWSTR::null(),
+                Some(&entropi_blob),
+                None,
+                None,
+                CRYPTPROTECT_UI_FORBIDDEN,
+                &mut cikis,
+            )
+            .map_err(|e| e.to_string())?;
+            Ok(cikti_al(&cikis))
+        }
+    }
+
+    pub fn coz(veri: &[u8]) -> Result<Vec<u8>, String> {
+        let entropi = ENTROPI.to_vec();
+        unsafe {
+            let giris = blob(veri);
+            let entropi_blob = blob(&entropi);
+            let mut cikis = bos_blob();
+            CryptUnprotectData(
+                &giris,
+                None,
+                Some(&entropi_blob),
+                None,
+                None,
+                CRYPTPROTECT_UI_FORBIDDEN,
+                &mut cikis,
+            )
+            .map_err(|e| e.to_string())?;
+            Ok(cikti_al(&cikis))
+        }
+    }
 }
 
 #[cfg(test)]

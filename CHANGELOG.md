@@ -5,6 +5,18 @@ Bu projedeki dikkate değer değişiklikler bu dosyada belgelenir.
 Biçim [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) standardını,
 sürümleme [Semantic Versioning](https://semver.org/lang/tr/) kurallarını takip eder.
 
+## [1.9.0] - 2026-06-15
+
+### Eklendi
+- **Olay tabanlı yeniden bağlanma:** Windows IP arayüz değişikliği bildirimine (`NotifyIpInterfaceChange`) abone olunarak, Wi-Fi bağlandığı an oturum kontrolü yapılır; düşen GSB oturumu 12 saatlik aralığı beklemeden saniyeler içinde geri açılır. 12 saatlik anket güvenlik ağı olarak kalır. Kayıt başarısız olursa sessizce ankete düşülür. Olay tetiklemeli kontrollerde "oturum aktif" log satırı bastırılır (log kirliliği olmaz).
+- **DPAPI ile kimlik şifreleme:** Kayıtlı kimlik bilgileri artık Windows DPAPI (`CryptProtectData`) ile şifrelenir; anahtar işletim sistemi tarafından oturum açan kullanıcıya bağlanır (`v3:` öneki). Eski AES-GCM (v2/v1) kayıtları okunmaya devam eder ve ilk girişte DPAPI'ye taşınır. DPAPI kullanılamazsa AES-GCM v2'ye düşülür.
+- **Kota geçmişi ve tükenme tahmini:** Her başarılı girişte günlük kota anlık görüntüsü `kota_gecmisi.json` dosyasına kaydedilir (gün başına bir kayıt, 90 gün sınırı). Hoş geldin ekranında kota kartının altında inline SVG sparkline ve günlük tüketime göre "bu hızla ~N gün sonra biter" tahmini gösterilir (en az 2 günlük veri olunca; yenilenme atlamaları tahmine dahil edilmez). Harici grafik kütüphanesi yoktur.
+- **Bağlantı tanılama paneli:** Tek tıkla aşamalı self-test — GSB ağı, DNS çözümleme, TCP :443, internet/captive oturum durumu, portal HTTP erişimi ve kayıtlı oturum — her biri başarılı/uyarı/hata olarak. Sessiz otomatik-giriş hatalarını somut teşhise çevirir; mevcut ağ fonksiyonlarının üstüne kurulur.
+- **Bilgileri yenile:** Bağlı ekrandaki yenile butonu, yeniden giriş yapmadan aktif oturumla portaldan güncel kullanıcı/kota bilgisini çeker; kart ve kota grafiği tazelenir, kota geçmişi ve bildirimler de güncellenir. Oturum düşmüşse anlaşılır bir uyarı gösterilir.
+
+### Değiştirildi
+- Pencere artık tam ekrana geçemez: sabit boyut (420×680) yanında maximize/fullscreen kapatıldı ve F11 ile HTML Fullscreen API bloke edildi.
+
 ## [1.8.0] - 2026-06-12
 
 ### Eklendi

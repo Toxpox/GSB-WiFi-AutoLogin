@@ -121,6 +121,44 @@
 /* legacy single-line percent — now superseded by .kota-yuzde-buyuk */
 .kota-yuzde { display: none; }
 
+/* ============ Quota history graph ============ */
+.kota-grafik {
+    margin: 12px 24px 0;
+    padding: 12px 16px 10px;
+    background: var(--arkaplan-2);
+    border: 1px solid var(--cizgi);
+    border-radius: var(--radius-lg);
+    flex: 0 0 auto;
+}
+.kota-grafik-baslik {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.kota-grafik-lbl {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gri-koyu);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.kota-tahmin {
+    font-size: 11px;
+    color: var(--gri);
+    text-align: right;
+}
+.kota-grafik-cizim {
+    color: var(--mor-acik);
+    height: 40px;
+}
+.kota-spark {
+    width: 100%;
+    height: 40px;
+    display: block;
+}
+
 /* ============ User info rows (no card) ============ */
 #bilgi-kart {
     margin: 16px 28px 0;

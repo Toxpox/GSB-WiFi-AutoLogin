@@ -73,6 +73,13 @@
     color: var(--beyaz);
     background: rgba(255, 255, 255, 0.04);
 }
+.ikon-link:disabled {
+    cursor: wait;
+}
+/* "Bilgileri yenile" yuklenirken ikonu dondurur */
+.ikon-link.donuyor svg {
+    animation: spin .8s linear infinite;
+}
 
 /* spinner inside primary button while loading */
 .spinner {

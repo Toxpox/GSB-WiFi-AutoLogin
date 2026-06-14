@@ -1,0 +1,75 @@
+/* ============ Diagnostics panel ============ */
+/* #tani-panel temel cercevesini .log-panel'den miras alir (alt-sheet). */
+
+.tani-icerik {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 12px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tani-yukleniyor {
+    color: var(--gri-koyu);
+    font-size: 12px;
+    padding: 6px 2px;
+}
+
+.tani-satir {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 9px 11px;
+    background: var(--arkaplan-2);
+    border: 1px solid var(--cizgi);
+    border-radius: var(--radius-sm);
+}
+
+.tani-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 4px;
+    flex: 0 0 auto;
+    background: var(--gri-koyu);
+}
+.tani-satir.ok .tani-dot    { background: var(--yesil-acik); box-shadow: 0 0 6px -1px var(--yesil-acik); }
+.tani-satir.uyari .tani-dot { background: var(--sari-acik); }
+.tani-satir.hata .tani-dot  { background: var(--kirmizi-acik); }
+.tani-satir.bilgi .tani-dot { background: var(--mor-hover); }
+
+.tani-govde {
+    flex: 1;
+    min-width: 0;
+}
+.tani-ust {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+.tani-ad {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--beyaz);
+}
+.tani-rozet {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    flex: 0 0 auto;
+}
+.tani-satir.ok .tani-rozet    { color: var(--yesil-acik); }
+.tani-satir.uyari .tani-rozet { color: var(--sari-acik); }
+.tani-satir.hata .tani-rozet  { color: var(--kirmizi-acik); }
+.tani-satir.bilgi .tani-rozet { color: var(--gri-koyu); }
+
+.tani-detay {
+    font-size: 11px;
+    color: var(--gri);
+    margin-top: 3px;
+    line-height: 1.45;
+    word-break: break-word;
+}

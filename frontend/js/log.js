@@ -46,6 +46,9 @@ function logPenceresiGuncelle() {
 }
 
 function logPanelAcKapa() {
+    // Ayni anda tek alt-panel acik kalsin (tanilama paneliyle cakismasin).
+    var tani = document.getElementById('tani-panel');
+    if (tani) tani.classList.remove('acik');
     document.getElementById('log-panel').classList.toggle('acik');
 }
 

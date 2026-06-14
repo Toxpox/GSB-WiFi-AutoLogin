@@ -6,7 +6,7 @@
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin.svg?type=shield&issueType=license)](https://app.fossa.com/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin?ref=badge_shield&issueType=license)
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-1.8.0-blue.svg?cacheSeconds=2592000&style=for-the-badge" />
+  <img alt="Version" src="https://img.shields.io/badge/version-1.9.0-blue.svg?cacheSeconds=2592000&style=for-the-badge" />
   <a href="https://github.com/Toxpox/GSB-WiFi-AutoLogin/blob/main/LICENSE" target="_blank">
     <img alt="License: GPLv3" src="https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge" />
   </a>
@@ -31,15 +31,18 @@
 - ⚡ **Otomatik Giriş:** Uygulama açılışında kayıtlı profille kendiliğinden bağlanma; tek tıkla manuel giriş her zaman mümkün.
 - 🖥️ **Sistem Tepsisi:** Pencere kapatılınca tepsiye küçülme; tepsi menüsünden Bağlan / Çıkış Yap / Pencereyi Göster; bağlantı durumu tepsi ipucunda.
 - 🚀 **Başlangıçta Çalışma:** Windows açılışında sessizce (pencere açmadan, tepsiden) başlama seçeneği.
-- 🔁 **Otomatik Yeniden Bağlanma:** Periyodik oturum canlılık kontrolü; oturum düştüyse son kimlik bilgileriyle kendiliğinden yeniden giriş.
+- 🔁 **Otomatik Yeniden Bağlanma:** Wi-Fi bağlandığı an olay tabanlı oturum kontrolü (Windows ağ değişikliği bildirimi); oturum düştüyse son kimlik bilgileriyle kendiliğinden yeniden giriş. 12 saatlik periyodik kontrol güvenlik ağı olarak kalır.
 - 📡 **GSB Ağı Algılama:** GSB ağında değilken uyarı; gereksiz giriş denemeleri yapılmaz.
 - 🆕 **Otomatik Güncelleme:** Açılışta arka planda sürüm kontrolü; güncelleme varsa pencerenin üstünde yeşil bir bar belirir, tek tıkla imzalı güncelleme indirilip kurulur ve uygulama yeniden başlar (installer sürümünde; portable'da indirme sayfası açılır).
 - 🔔 **Kota Bildirimleri:** Kota %20'nin altına düşünce veya dolunca Windows bildirimi; bağlantı koptuğunda da haber verir.
 - 📊 **Kota Takibi:** Kalan kota, yüzde göstergesi, kullanılan kota ve yenilenme tarihi.
+- 📈 **Kota Geçmişi & Tahmin:** Günlük kota kayıtlarından mini grafik (inline SVG) ve günlük tüketime göre "bu hızla ~N gün sonra biter" tükenme tahmini.
+- ♻️ **Bilgileri Yenile:** Bağlı ekranda tek tıkla, yeniden giriş yapmadan kota ve kullanıcı bilgilerini güncelleme.
 - 👥 **Çoklu Profil:** Birden fazla hesabı yerelde kaydetme, takma ad verme, seçme ve silme.
 - ⚙️ **Ayarlar Paneli:** Otomatik giriş, tepsiye küçülme, başlangıçta çalışma, yeniden bağlanma ve bildirimler için kalıcı anahtarlar.
 - 📜 **Sistem Günlüğü:** Tüm adımlar log panelinde ve `logs/uygulama.log` dosyasında (otomatik rotasyonlu); "Klasörü Aç" ile erişim.
-- 🔒 **Şifreleme:** Kullanıcı bilgilerini `user_config.json` içinde AES-GCM ile şifreli saklama.
+- 🩺 **Bağlantı Tanılama:** Tek tıkla aşamalı self-test (GSB ağı, DNS, TCP :443, internet/captive durumu, portal erişimi, kayıtlı oturum); sessiz giriş hatalarını somut teşhise çevirir.
+- 🔒 **Şifreleme:** Kullanıcı bilgilerini cihaza bağlı olarak şifreli saklama: Windows DPAPI (oturum açan kullanıcı hesabına bağlı) önceliklidir, kullanılamazsa AES-GCM'e düşülür. Eski AES kayıtları okunur ve ilk girişte DPAPI'ye taşınır.
 - 🚪 **Oturum Yönetimi:** Aktif oturumu sonlandırma ve maksimum cihaz durumunda önceki oturumu düşürme.
 - 🔄 **Yeniden Deneme:** Ağ hatalarında exponential backoff ile kontrollü tekrar deneme.
 - 🎨 **Modern Arayüz:** Koyu tema, kompakt giriş ekranı ve akıcı ekran geçişleri.
@@ -73,7 +76,7 @@ Uygulama açılışta yeni sürümü arka planda kontrol eder. Güncelleme varsa
 
 Bu uygulama **yalnızca GSB/KYK captive portali** için tasarlanmıştır.
 
-Kimlik bilgileriniz sadece kendi bilgisayarınızda saklanır. Kayıtlı profiller `user_config.json` içinde, cihaza özgü bir anahtarla (makine adı + işletim sistemi kullanıcı adından türetilir) AES-GCM kullanılarak şifrelenir ve hiçbir dış sunucuya gönderilmez. GitHub sürüm kontrolü yalnızca release bilgisi almak için GitHub API'ye istek atar; kullanıcı adı, şifre veya profil bilgisi bu isteğe eklenmez.
+Kimlik bilgileriniz sadece kendi bilgisayarınızda saklanır. Kayıtlı profiller `user_config.json` içinde şifrelenir: öncelikle Windows DPAPI (şifre çözme, oturum açan Windows kullanıcı hesabına bağlıdır) kullanılır; DPAPI kullanılamazsa makine adı + işletim sistemi kullanıcı adından türetilen anahtarla AES-GCM'e düşülür. Daha önce AES ile kaydedilmiş profiller okunmaya devam eder ve ilk girişte DPAPI'ye taşınır. Bilgiler hiçbir dış sunucuya gönderilmez. GitHub sürüm kontrolü yalnızca release bilgisi almak için GitHub API'ye istek atar; kullanıcı adı, şifre veya profil bilgisi bu isteğe eklenmez.
 
 Giriş istekleri backend tarafında doğrulanır ve yalnızca `wifi.gsb.gov.tr` adresine gönderilebilir; kimlik bilgilerinin başka bir adrese iletilmesi mümkün değildir.
 
@@ -143,6 +146,7 @@ node --check frontend/js/hosgeldin.js
 | **reqwest** | Captive portal, çıkış işlemi ve GitHub Releases API istekleri |
 | **GitHub Releases API** | Yeni sürüm kontrolü ve otomatik güncelleme dağıtımı |
 | **tauri-plugin-updater** | İmzalı uygulama içi otomatik güncelleme |
+| **windows (windows-rs)** | DPAPI ile kimlik şifreleme ve olay tabanlı yeniden bağlanma (IP arayüz değişikliği bildirimi) |
 
 ---
 

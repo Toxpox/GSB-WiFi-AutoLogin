@@ -216,6 +216,56 @@ fn ozel_ip_mi(ip: &std::net::IpAddr) -> bool {
     }
 }
 
+/// Tanilama icin: portal ana sayfasina (index.html) ulasilip ulasilamadigini
+/// ve HTTP durum kodunu doner. Yonlendirme izlenmez; captive portal araya
+/// girerse durum kodu yine de anlamli kalir.
+pub async fn portal_erisim_testi(clients: &PortalClients) -> Result<u16, GSBError> {
+    let yanit = clients
+        .no_redirect
+        .get(INDEX_URL)
+        .send()
+        .await
+        .map_err(|e| GSBError::AgHatasi {
+            mesaj: e.to_string(),
+            kullanici_mesaji: "Portala erisilemedi.".into(),
+        })?;
+    Ok(yanit.status().as_u16())
+}
+
+/// Aktif oturumla portal ana sayfasini ceker; kullanici/kota bilgisini tasiyan
+/// HTML'i doner. `normal` istemci yonlendirmeleri izledigi icin oturum dustuyse
+/// portal login sayfasina dususur — bu durum tespit edilip anlasilir bir hata
+/// dondurulur (bilgi yenileme komutu icin).
+pub async fn oturum_bilgisi_getir(client: &Client) -> Result<String, GSBError> {
+    let yanit = client
+        .get(INDEX_URL)
+        .send()
+        .await
+        .map_err(|e| GSBError::AgHatasi {
+            mesaj: e.to_string(),
+            kullanici_mesaji: "Bilgiler alınamadı. GSB WiFi ağına bağlı olduğunuzdan emin olun."
+                .into(),
+        })?;
+    let final_url = yanit.url().to_string();
+    let body = yanit.text().await.map_err(|e| GSBError::AgHatasi {
+        mesaj: e.to_string(),
+        kullanici_mesaji: "Sunucu yanıtı okunamadı.".into(),
+    })?;
+
+    // Oturum dustuyse portal login'e yonlenir (content-div yalnizca oturum
+    // acik sayfada bulunur; giris_yap ile ayni isaret).
+    let oturum_dustu = final_url.contains("login.html")
+        || final_url.contains("j_spring_security_check")
+        || !body.contains("content-div");
+    if oturum_dustu {
+        return Err(GSBError::GirisBasarisiz {
+            mesaj: "Oturum dusmus".into(),
+            kullanici_mesaji: "Oturum düşmüş görünüyor. Lütfen yeniden bağlanın.".into(),
+        });
+    }
+    Ok(body)
+}
+
 pub async fn cikis_yap(clients: &PortalClients) -> Result<bool, GSBError> {
     let ilk_yanit = clients
         .no_redirect
