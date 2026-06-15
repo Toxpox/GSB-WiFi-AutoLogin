@@ -23,7 +23,7 @@
 ## Preview
 
 <p align="center">
-  <img src="assets/preview.gif" alt="GSB WiFi AutoLogin UI demo" width="520">
+  <img src="assets/banner.png" alt="GSB WiFi AutoLogin — giriş, bağlantı tanılama ve bağlantı aktif ekranları" width="880">
 </p>
 
 ## ✨ Özellikler
