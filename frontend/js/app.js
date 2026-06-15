@@ -12,7 +12,7 @@ document.addEventListener('fullscreenchange', function() {
     }
 });
 
-let VERSION = "1.9.0";
+let VERSION = "1.9.1";
 let GIRIS_URL = "https://wifi.gsb.gov.tr/j_spring_security_check";
 let KAYITLI_PROFILLER = [];
 let SECILI_PROFIL_ID = null;
@@ -411,43 +411,53 @@ async function yeniVersiyonKontrolEt() {
     }
 }
 
+// Marka satirindaki kucuk yesil guncelleme butonunu gosterir. Uzun bilgi
+// metni tooltip'te (title), buton etiketi kisa "Güncelle".
 function guncellemeBariGoster(metin, tiklama) {
-    var bar = document.getElementById('guncelleme-bar');
-    var yazi = document.getElementById('guncelleme-bar-yazi');
-    if (!bar || !yazi) return;
-    yazi.textContent = metin;
-    bar.onclick = tiklama;
-    bar.disabled = false;
-    bar.classList.remove('gizli');
+    var btn = document.getElementById('guncelleme-btn');
+    var yazi = document.getElementById('guncelleme-btn-yazi');
+    if (!btn || !yazi) return;
+    btn.title = metin;
+    yazi.textContent = 'Güncelle';
+    btn.onclick = tiklama;
+    btn.disabled = false;
+    btn.classList.remove('gizli');
 }
 
 // Yesil bara tiklaninca calisir: ek onay yok, indirme ilerlemesi barda
 // gosterilir; kurulum bitince installer uygulamayi kapatip yeniden baslatir.
 async function guncellemeKur() {
-    var bar = document.getElementById('guncelleme-bar');
-    var yazi = document.getElementById('guncelleme-bar-yazi');
-    bar.disabled = true;
-    yazi.textContent = 'İndiriliyor…';
+    var btn = document.getElementById('guncelleme-btn');
+    var yazi = document.getElementById('guncelleme-btn-yazi');
+    if (!btn || !yazi) return;
+    btn.disabled = true;
+    yazi.textContent = '…';
+    btn.title = 'İndiriliyor…';
 
     var dinlemeyiBirak = null;
     try {
         dinlemeyiBirak = await window.__TAURI__.event.listen('guncelleme-ilerleme', function(olay) {
             var p = olay.payload || {};
-            yazi.textContent = (p.yuzde !== null && p.yuzde !== undefined)
-                ? 'İndiriliyor… %' + p.yuzde
-                : 'İndiriliyor… ' + (p.indirilen_mb || 0).toFixed(1) + ' MB';
+            if (p.yuzde !== null && p.yuzde !== undefined) {
+                yazi.textContent = '%' + p.yuzde;
+                btn.title = 'İndiriliyor… %' + p.yuzde;
+            } else {
+                yazi.textContent = (p.indirilen_mb || 0).toFixed(1) + ' MB';
+            }
         });
         logYaz('Güncelleme indiriliyor.', 'bilgi');
         await invoke('guncelleme_kur');
-        yazi.textContent = 'Kuruluyor, uygulama yeniden başlayacak…';
+        yazi.textContent = 'Kuruluyor…';
+        btn.title = 'Kuruluyor, uygulama yeniden başlayacak…';
     } catch (e) {
         logYaz('Güncelleme başarısız: ' + String(e), 'hata');
-        yazi.textContent = 'Güncelleme başarısız — tekrar denemek için tıkla';
-        bar.disabled = false;
+        yazi.textContent = 'Tekrar dene';
+        btn.title = 'Güncelleme başarısız — tekrar denemek için tıkla';
+        btn.disabled = false;
         // Update nesnesi tuketildi; tekrar denemede kontrol bastan yapilir.
-        bar.onclick = function() {
+        btn.onclick = function() {
             VERSIYON_KONTROL_EDILDI = false;
-            bar.classList.add('gizli');
+            btn.classList.add('gizli');
             yeniVersiyonKontrolEt();
         };
     } finally {

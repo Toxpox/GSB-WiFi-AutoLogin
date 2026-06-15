@@ -12,13 +12,6 @@
     <link rel="stylesheet" href="css/tani.css">
 </head>
 <body>
-    <!-- Guncelleme bildirimi: her iki ekranin da ustunde, gizli baslar -->
-    <button id="guncelleme-bar" class="guncelleme-bar gizli" type="button">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 19V5"/><path d="M5 12l7-7 7 7"/>
-        </svg>
-        <span id="guncelleme-bar-yazi">Yeni sürüm mevcut</span>
-    </button>
 
     <!-- ============ Login screen ============ -->
     <div id="ekran-giris" class="ekran aktif">
@@ -147,6 +140,12 @@
                         <path d="M20.5 12a8.5 8.5 0 0 1-14.6 6"/>
                         <path d="M6 21v-4h4"/>
                     </svg>
+                </button>
+                <button id="guncelleme-btn" class="guncelleme-btn gizli" type="button" title="Yeni sürüm mevcut" aria-label="Güncelle">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 19V5"/><path d="M5 12l7-7 7 7"/>
+                    </svg>
+                    <span id="guncelleme-btn-yazi">Güncelle</span>
                 </button>
                 <button class="ikon-link js-github-btn" type="button" title="GitHub" aria-label="GitHub deposunu aç">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">

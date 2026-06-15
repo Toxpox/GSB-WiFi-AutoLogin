@@ -4,3 +4,6 @@ src-tauri/gen/
 
 # Node
 node_modules/
+
+# asset olusturma
+assets/banner.html

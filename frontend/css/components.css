@@ -284,34 +284,31 @@
     text-align: left;
 }
 
-/* ---- Guncelleme bari ---- */
-.guncelleme-bar {
-    display: flex;
+/* ---- Guncelleme butonu (marka satiri, GitHub'in solunda) ---- */
+.guncelleme-btn {
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 7px;
-    width: 100%;
-    padding: 8px 12px;
-    border: none;
-    border-bottom: 1px solid rgba(16, 185, 129, 0.35);
-    background: linear-gradient(180deg, rgba(16, 185, 129, 0.22), rgba(16, 185, 129, 0.14));
+    gap: 5px;
+    height: 26px;
+    padding: 0 11px;
+    border: 1px solid rgba(16, 185, 129, 0.5);
+    border-radius: 999px;
+    background: rgba(16, 185, 129, 0.16);
     color: var(--yesil-acik);
     font-family: var(--font);
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.15s ease;
+    white-space: nowrap;
+    transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.guncelleme-bar:hover:not(:disabled) {
-    background: linear-gradient(180deg, rgba(16, 185, 129, 0.3), rgba(16, 185, 129, 0.2));
+.guncelleme-btn:hover:not(:disabled) {
+    background: rgba(16, 185, 129, 0.26);
+    border-color: rgba(16, 185, 129, 0.7);
 }
 
-.guncelleme-bar:disabled {
+.guncelleme-btn:disabled {
     cursor: default;
-    opacity: 0.8;
-}
-
-.guncelleme-bar.gizli {
-    display: none;
+    opacity: 0.85;
 }

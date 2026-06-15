@@ -869,6 +869,16 @@ async fn yeniden_baglanmayi_dene(app: &AppHandle, sessiz_aktif: bool) {
     }
 
     if network::internet_var_mi().await {
+        // Oturum canli: gunluk kota anlik goruntusunu (gun basina en fazla bir
+        // kez) yakala ki her zaman bagli kalan kullanicilarda kullanim grafigi
+        // verisi birikebilsin. Best-effort: hata/eksik veri sessizce yutulur.
+        let bugun = chrono::Local::now().format("%Y-%m-%d").to_string();
+        if !config::kota_gecmisi_oku().iter().any(|k| k.tarih == bugun) {
+            let client = state.client.lock().await.normal.clone();
+            if let Ok(html) = network::oturum_bilgisi_getir(&client).await {
+                kota_gecmisi_isle(&parser::bilgi_cek(&html));
+            }
+        }
         if !sessiz_aktif {
             yeniden_baglanma_bildir(app, "soluk", "Bağlantı kontrolü: oturum aktif.".to_string());
         }

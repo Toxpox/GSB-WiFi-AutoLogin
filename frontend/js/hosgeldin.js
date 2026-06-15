@@ -150,16 +150,19 @@ async function kotaGecmisiCiz() {
 
     var gecmis = [];
     try { gecmis = await invoke('kota_gecmisi_al'); } catch (_) {}
-    if (!Array.isArray(gecmis) || gecmis.length < 2) {
-        grafik.classList.add('gizli');
-        return;
-    }
+    if (!Array.isArray(gecmis)) gecmis = [];
     gecmis = gecmis.slice(-30);
 
     var toplam = 0;
     gecmis.forEach(function(k) { if (k.toplam_mb > toplam) toplam = k.toplam_mb; });
-    if (toplam <= 0) {
-        grafik.classList.add('gizli');
+
+    // Yeterli veri yoksa karti gizlemek yerine bilgilendirici metin goster;
+    // boylece kullanici ozelligin var oldugunu ve verinin biriktigini bilir
+    // (grafik en az 2 farkli gunluk veriyle cizilir).
+    if (gecmis.length < 2 || toplam <= 0) {
+        if (tahminEl) tahminEl.textContent = '';
+        cizim.innerHTML = '<div class="kota-grafik-bos">Grafik birkaç günlük kullanım verisiyle oluşur.</div>';
+        grafik.classList.remove('gizli');
         return;
     }
 

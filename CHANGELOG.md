@@ -5,6 +5,15 @@ Bu projedeki dikkate değer değişiklikler bu dosyada belgelenir.
 Biçim [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) standardını,
 sürümleme [Semantic Versioning](https://semver.org/lang/tr/) kurallarını takip eder.
 
+## [1.9.1] - 2026-06-15
+
+### Düzeltmeler
+- **Güncelleme butonu tıklanamıyordu:** "Yeni sürüm" bildirimi tam genişlikte bir üst bardı ve ekran katmanının (`.ekran`) altında kaldığı için hem yazılarla çakışıyor hem de tıklanamıyordu. Artık bağlı ekranda, GitHub butonunun solunda küçük yeşil bir buton; tıklanabilir, indirme yüzdesi/durumu tooltip'te gösterilir.
+- **Kullanım grafiği gözükmüyordu:** İki yönlü düzeltildi — (1) yeterli veri yokken kart gizlenmek yerine "Grafik birkaç günlük kullanım verisiyle oluşur." bilgisini gösteriyor; (2) oturum açıkken günde en fazla bir kez kota anlık görüntüsü kaydedilerek, sürekli bağlı kalan kullanıcılarda da grafik verisi birikiyor (grafik en az 2 farklı günlük veriyle çizilir).
+
+### Bakım
+- Bağımlılıklar güncellendi (Tauri 2.10 → 2.11, `windows` 0.58 → 0.61 ve ~80 paket semver-uyumlu); `cargo audit` ile güvenlik denetimi yapıldı (0 güvenlik açığı).
+
 ## [1.9.0] - 2026-06-15
 
 ### Eklendi

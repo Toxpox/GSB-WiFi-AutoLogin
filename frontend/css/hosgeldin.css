@@ -153,6 +153,11 @@
     color: var(--mor-acik);
     height: 40px;
 }
+.kota-grafik-bos {
+    font-size: 11.5px;
+    color: var(--gri-koyu);
+    padding: 10px 0 6px;
+}
 .kota-spark {
     width: 100%;
     height: 40px;
