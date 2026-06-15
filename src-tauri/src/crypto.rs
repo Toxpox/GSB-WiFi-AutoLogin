@@ -149,7 +149,7 @@ mod dpapi {
         }
         let dilim = std::slice::from_raw_parts(cikis.pbData, cikis.cbData as usize);
         let sonuc = dilim.to_vec();
-        let _ = LocalFree(HLOCAL(cikis.pbData as *mut _));
+        let _ = LocalFree(Some(HLOCAL(cikis.pbData as *mut _)));
         sonuc
     }
 

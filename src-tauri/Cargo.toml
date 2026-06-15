@@ -32,7 +32,7 @@ chrono = { version = "0.4", default-features = false, features = ["clock"] }
 # bildirimi) ve DPAPI ile kimlik bilgisi sifreleme. Yalnizca Windows'ta cekilir;
 # Linux yol haritasi bu bagimliligi getirmez.
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.58", features = [
+windows = { version = "0.61", features = [
     "Win32_Foundation",
     "Win32_NetworkManagement_IpHelper",
     "Win32_NetworkManagement_Ndis",

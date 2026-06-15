@@ -16,7 +16,7 @@ use tokio::sync::Notify;
 #[cfg(windows)]
 pub fn ag_degisikligini_dinle(notify: Arc<Notify>) {
     use std::ffi::c_void;
-    use windows::Win32::Foundation::{BOOLEAN, ERROR_SUCCESS, HANDLE};
+    use windows::Win32::Foundation::{ERROR_SUCCESS, HANDLE};
     use windows::Win32::NetworkManagement::IpHelper::{
         NotifyIpInterfaceChange, MIB_IPINTERFACE_ROW, MIB_NOTIFICATION_TYPE,
     };
@@ -47,7 +47,7 @@ pub fn ag_degisikligini_dinle(notify: Arc<Notify>) {
             AF_UNSPEC,
             Some(geri_cagir),
             Some(baglam),
-            BOOLEAN(0),
+            false,
             &mut tutamac,
         )
     };
