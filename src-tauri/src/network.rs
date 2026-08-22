@@ -134,6 +134,23 @@ pub async fn giris_yap(
     kullanici: &str,
     sifre: &str,
 ) -> Result<GirisYaniti, GSBError> {
+    giris_yap_butceli(
+        client,
+        url,
+        kullanici,
+        sifre,
+        Duration::from_secs(LOGIN_BUTCE_SECS),
+    )
+    .await
+}
+
+async fn giris_yap_butceli(
+    client: &Client,
+    url: &str,
+    kullanici: &str,
+    sifre: &str,
+    butce: Duration,
+) -> Result<GirisYaniti, GSBError> {
     let veri = [
         ("j_username", kullanici),
         ("j_password", sifre),
@@ -141,18 +158,36 @@ pub async fn giris_yap(
     ];
 
     let mut son_hata: Option<GSBError> = None;
-    let biten_sure = tokio::time::Instant::now() + Duration::from_secs(LOGIN_BUTCE_SECS);
+    let biten_sure = tokio::time::Instant::now() + butce;
     let toplam_olcer = AsamaOlcer::basla(Asama::LoginToplam);
 
     for deneme in 1..=MAX_DENEME {
         let deneme_olcer = AsamaOlcer::basla(Asama::LoginDenemesi);
-        match client.post(url).form(&veri).send().await {
+        let kalan = biten_sure.saturating_duration_since(tokio::time::Instant::now());
+        if kalan.is_zero() {
+            break;
+        }
+
+        let istek = client.post(url).form(&veri).send();
+        let Ok(yanit) = tokio::time::timeout(kalan, istek).await else {
+            son_hata = Some(GSBError::ZamanAsimi);
+            deneme_olcer.bitir::<(), _>(&Err(&()));
+            break;
+        };
+
+        match yanit {
             Ok(r) => {
                 let status = r.status();
                 let final_url = r.url().to_string();
                 let ip = r.remote_addr().map(|adres| adres.ip().to_string());
                 let govde_olcer = AsamaOlcer::basla(Asama::Body);
-                let body = match sinirli_govde(r, PORTAL_BODY_LIMIT).await {
+                let kalan = biten_sure.saturating_duration_since(tokio::time::Instant::now());
+                let govde_sonucu =
+                    match tokio::time::timeout(kalan, sinirli_govde(r, PORTAL_BODY_LIMIT)).await {
+                        Ok(sonuc) => sonuc,
+                        Err(_) => Err(GSBError::ZamanAsimi),
+                    };
+                let body = match govde_sonucu {
                     Ok(body) => {
                         govde_olcer.bitir::<_, GSBError>(&Ok(()));
                         body
@@ -222,7 +257,11 @@ pub async fn giris_yap(
 
                 match karar {
                     DenemeKarari::Belirsiz => {
-                        if let Ok(html) = oturum_bilgisi_getir(client).await {
+                        let kalan =
+                            biten_sure.saturating_duration_since(tokio::time::Instant::now());
+                        let dogrulama =
+                            tokio::time::timeout(kalan, oturum_bilgisi_getir(client)).await;
+                        if let Ok(Ok(html)) = dogrulama {
                             let basarili: Result<(), GSBError> = Ok(());
                             deneme_olcer.bitir(&basarili);
                             toplam_olcer.bitir_ek(
@@ -894,7 +933,7 @@ mod tests {
         );
     }
 
-    #[tokio::test(start_paused = true)]
+    #[tokio::test]
     async fn sunucu_hatasindan_sonra_tekrar_denenir() {
         let hata_yaniti =
             b"HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
@@ -909,7 +948,7 @@ mod tests {
         assert!(yanit.html.contains("content-div"));
     }
 
-    #[tokio::test(start_paused = true)]
+    #[tokio::test]
     async fn asiri_buyuk_login_yaniti_reddedilir() {
         let dev_govde = "z".repeat(PORTAL_BODY_LIMIT + 1024);
         let url = sirali_sunucu(vec![
@@ -925,5 +964,42 @@ mod tests {
             .expect_err("limit asan govde kabul edilmemeli");
 
         assert!(matches!(hata, GSBError::AgHatasi { .. }));
+    }
+
+    #[tokio::test]
+    async fn login_global_butceyi_asmaz() {
+        let dinleyici = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let adres = dinleyici.local_addr().unwrap();
+        tokio::spawn(async move {
+            let mut acik = Vec::new();
+            while let Ok((soket, _)) = dinleyici.accept().await {
+                acik.push(soket);
+            }
+        });
+
+        let butce = Duration::from_millis(300);
+        let client = Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()
+            .unwrap();
+
+        let basladi = std::time::Instant::now();
+        let sonuc = tokio::time::timeout(
+            butce * 4,
+            giris_yap_butceli(&client, &format!("http://{}/", adres), "k", "s", butce),
+        )
+        .await;
+        let gecen = basladi.elapsed();
+
+        assert!(
+            sonuc.is_ok(),
+            "login butce icinde donmedi, akis askida kaldi"
+        );
+        assert!(
+            gecen < butce * 3,
+            "login {:?} surdu, butce {:?}: denemeler butceye bagli degil",
+            gecen,
+            butce
+        );
     }
 }

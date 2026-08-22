@@ -31,8 +31,22 @@ pub const YENIDEN_BAGLAN_ARALIK_SAAT: u64 = 12;
 pub const BAGLANTI_TEST_URL: &str = "http://www.msftconnecttest.com/connecttest.txt";
 pub const BAGLANTI_TEST_BEKLENEN: &str = "Microsoft Connect Test";
 pub const MAX_DENEME: u32 = 3;
+
+const _: () = {
+    assert!(CONNECT_TIMEOUT_SECS < TIMEOUT_SECS);
+    assert!(READ_TIMEOUT_SECS < TIMEOUT_SECS);
+    assert!(DNS_TIMEOUT_SECS <= TIMEOUT_SECS);
+    assert!(LOGIN_BUTCE_SECS >= TIMEOUT_SECS);
+};
+#[cfg(not(test))]
 pub const BACKOFF_TABANI: f64 = 2.0;
+#[cfg(not(test))]
 pub const BACKOFF_CARPAN: f64 = 3.0;
+
+#[cfg(test)]
+pub const BACKOFF_TABANI: f64 = 0.01;
+#[cfg(test)]
+pub const BACKOFF_CARPAN: f64 = 1.0;
 pub const USER_AGENT: &str = concat!("GSB-WiFi-AutoLogin/", env!("CARGO_PKG_VERSION"));
 pub const PORTAL_USER_AGENT: &str =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36";
@@ -540,6 +554,22 @@ pub fn tc_maskele(tc: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn uretim_zamanlama_sabitleri_login_butcesiyle_tutarli() {
+        let uretim_tabani = 2.0_f64;
+        let uretim_carpan = 3.0_f64;
+        let toplam_backoff: f64 = (0..MAX_DENEME - 1)
+            .map(|i| uretim_tabani * uretim_carpan.powi(i as i32) + 1.0)
+            .sum();
+
+        assert!(
+            toplam_backoff < LOGIN_BUTCE_SECS as f64,
+            "yalnizca backoff {:.1} sn, butce {} sn: hicbir deneme icin yer kalmaz",
+            toplam_backoff,
+            LOGIN_BUTCE_SECS
+        );
+    }
 
     #[test]
     fn tekil_kayit_profil_deposuna_tasinir() {
