@@ -74,6 +74,27 @@ pub struct GirisYaniti {
     pub ip: Option<String>,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum DenemeKarari {
+    GuvenliTekrar,
+
+    Belirsiz,
+
+    Kesin,
+}
+
+fn deneme_karari(hata: &reqwest::Error) -> DenemeKarari {
+    if hata.is_connect() {
+        DenemeKarari::GuvenliTekrar
+    } else if hata.is_timeout() || hata.is_body() || hata.is_decode() {
+        DenemeKarari::Belirsiz
+    } else if hata.is_builder() || hata.is_redirect() {
+        DenemeKarari::Kesin
+    } else {
+        DenemeKarari::Belirsiz
+    }
+}
+
 pub async fn ip_bul(url: &str) -> Result<String, GSBError> {
     let parsed: url::Url = url.parse().map_err(|_| GSBError::DNSHatasi {
         host: url.to_string(),
@@ -116,6 +137,7 @@ pub async fn giris_yap(
     ];
 
     let mut son_hata: Option<GSBError> = None;
+    let biten_sure = tokio::time::Instant::now() + Duration::from_secs(LOGIN_BUTCE_SECS);
 
     for deneme in 1..=MAX_DENEME {
         match client.post(url).form(&veri).send().await {
@@ -163,21 +185,37 @@ pub async fn giris_yap(
                     return Ok(GirisYaniti { html: body, ip });
                 }
             }
-            Err(e) if e.is_timeout() => {
-                son_hata = Some(GSBError::ZamanAsimi);
-            }
             Err(e) => {
-                son_hata = Some(GSBError::AgHatasi {
-                    mesaj: e.to_string(),
-                    kullanici_mesaji: "GSB WiFi agina bagli oldugunuzdan emin olun.".into(),
+                let karar = deneme_karari(&e);
+                son_hata = Some(if e.is_timeout() {
+                    GSBError::ZamanAsimi
+                } else {
+                    GSBError::AgHatasi {
+                        mesaj: e.to_string(),
+                        kullanici_mesaji: "GSB WiFi agina bagli oldugunuzdan emin olun.".into(),
+                    }
                 });
+
+                match karar {
+                    DenemeKarari::Belirsiz => {
+                        if let Ok(html) = oturum_bilgisi_getir(client).await {
+                            return Ok(GirisYaniti { html, ip: None });
+                        }
+                    }
+                    DenemeKarari::Kesin => break,
+                    DenemeKarari::GuvenliTekrar => {}
+                }
             }
         }
 
         if deneme < MAX_DENEME {
             let bekleme =
                 BACKOFF_TABANI * BACKOFF_CARPAN.powi((deneme - 1) as i32) + rand::random::<f64>();
-            tokio::time::sleep(Duration::from_secs_f64(bekleme)).await;
+            let uyanma = tokio::time::Instant::now() + Duration::from_secs_f64(bekleme);
+            if uyanma >= biten_sure {
+                break;
+            }
+            tokio::time::sleep_until(uyanma).await;
         }
     }
 
@@ -639,5 +677,43 @@ mod tests {
         let govde = sinirli_govde(yanit, 1024).await.unwrap();
 
         assert_eq!(govde, "<html>merhaba</html>");
+    }
+
+    #[tokio::test]
+    async fn baglanti_hatasi_guvenli_tekrar_sayilir() {
+        let client = Client::builder().build().unwrap();
+
+        let hata = client
+            .get("http://127.0.0.1:1/")
+            .send()
+            .await
+            .expect_err("kapali porta baglanti basarili olmamali");
+
+        assert!(hata.is_connect());
+        assert_eq!(deneme_karari(&hata), DenemeKarari::GuvenliTekrar);
+    }
+
+    #[tokio::test]
+    async fn timeout_belirsiz_sayilir() {
+        let dinleyici = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let adres = dinleyici.local_addr().unwrap();
+        tokio::spawn(async move {
+            let kabul = dinleyici.accept().await;
+            tokio::time::sleep(Duration::from_secs(30)).await;
+            drop(kabul);
+        });
+
+        let client = Client::builder()
+            .timeout(Duration::from_millis(150))
+            .build()
+            .unwrap();
+        let hata = client
+            .get(format!("http://{}/", adres))
+            .send()
+            .await
+            .expect_err("yanit yazmayan sunucuda timeout bekleniyordu");
+
+        assert!(hata.is_timeout());
+        assert_eq!(deneme_karari(&hata), DenemeKarari::Belirsiz);
     }
 }

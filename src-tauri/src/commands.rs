@@ -772,13 +772,8 @@ fn yeniden_baglanma_bildir(app: &AppHandle, tip: &'static str, mesaj: String) {
 }
 
 pub async fn yeniden_baglanma_dongusu(app: AppHandle) {
-    const AG_OLAY_BEKLEME_SN: u64 = 4;
-
-    const AG_OLAY_COOLDOWN_SN: u64 = 45;
-
     let notify = app.state::<AppState>().ag_olay.clone();
     let periyot = Duration::from_secs(config::YENIDEN_BAGLAN_ARALIK_SAAT * 3600);
-    let mut son_olay_kontrol: Option<std::time::Instant> = None;
 
     loop {
         let olaydan = tokio::time::timeout(periyot, notify.notified())
@@ -786,17 +781,21 @@ pub async fn yeniden_baglanma_dongusu(app: AppHandle) {
             .is_ok();
 
         if olaydan {
-            tokio::time::sleep(Duration::from_secs(AG_OLAY_BEKLEME_SN)).await;
-            if let Some(t) = son_olay_kontrol {
-                if t.elapsed() < Duration::from_secs(AG_OLAY_COOLDOWN_SN) {
-                    continue;
-                }
-            }
-            son_olay_kontrol = Some(std::time::Instant::now());
+            olay_firtinasini_yatistir(&notify).await;
         }
 
         yeniden_baglanmayi_dene(&app, olaydan).await;
     }
+}
+
+const AG_OLAY_SESSIZLIK_SN: u64 = 4;
+
+async fn olay_firtinasini_yatistir(notify: &Notify) {
+    let pencere = Duration::from_secs(AG_OLAY_SESSIZLIK_SN);
+    while tokio::time::timeout(pencere, notify.notified())
+        .await
+        .is_ok()
+    {}
 }
 
 async fn yeniden_baglanmayi_dene(app: &AppHandle, sessiz_aktif: bool) {
@@ -962,5 +961,42 @@ mod tests {
         assert!(!guvenli_github_url(
             "http://github.com/Toxpox/GSB-WiFi-AutoLogin"
         ));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn olay_firtinasi_son_olaydan_sonra_yatisir() {
+        let notify = Arc::new(Notify::new());
+        let pencere = Duration::from_secs(AG_OLAY_SESSIZLIK_SN);
+
+        let uretici = notify.clone();
+        tokio::spawn(async move {
+            for _ in 0..5 {
+                tokio::time::sleep(pencere / 2).await;
+                uretici.notify_one();
+            }
+        });
+
+        let baslangic = tokio::time::Instant::now();
+        olay_firtinasini_yatistir(&notify).await;
+        let gecen = baslangic.elapsed();
+
+        assert!(
+            gecen >= (pencere * 5) / 2 + pencere,
+            "debounce son olaydan once dondu: {:?}",
+            gecen
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn tek_olayda_yalnizca_bir_pencere_beklenir() {
+        let notify = Arc::new(Notify::new());
+        let baslangic = tokio::time::Instant::now();
+
+        olay_firtinasini_yatistir(&notify).await;
+
+        assert_eq!(
+            baslangic.elapsed(),
+            Duration::from_secs(AG_OLAY_SESSIZLIK_SN)
+        );
     }
 }

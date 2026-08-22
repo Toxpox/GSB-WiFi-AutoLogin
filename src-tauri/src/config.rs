@@ -19,6 +19,7 @@ pub const CONNECT_TIMEOUT_SECS: u64 = 4;
 pub const READ_TIMEOUT_SECS: u64 = 8;
 pub const DNS_TIMEOUT_SECS: u64 = 3;
 pub const TCP_TIMEOUT_SECS: u64 = 3;
+pub const LOGIN_BUTCE_SECS: u64 = 25;
 pub const PORTAL_BODY_LIMIT: usize = 256 * 1024;
 pub const NCSI_BODY_LIMIT: usize = 1024;
 
