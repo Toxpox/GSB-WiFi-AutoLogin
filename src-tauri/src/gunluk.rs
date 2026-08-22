@@ -69,4 +69,30 @@ mod tests {
         let satir = satir_bicimle("z", "bilgi", &uzun);
         assert_eq!(satir.len(), "[z] [bilgi] ".len() + MAX_SATIR_KARAKTER);
     }
+
+    #[test]
+    fn test_logu_gercek_kullanici_dizinine_yazmaz() {
+        let yol = log_dosya_yolu();
+        assert!(
+            yol.starts_with(std::env::temp_dir()),
+            "test logu gecici dizinde olmali, gelen: {}",
+            yol.display()
+        );
+        assert!(
+            !yol.to_string_lossy().contains("GSB WiFi AutoLogin"),
+            "test kosumu gercek kullanici log dosyasini kirletmemeli"
+        );
+    }
+
+    #[test]
+    fn yazilan_satir_dosyada_okunabilir() {
+        yaz("olcum", "login_total_ms=1234 sonuc=ok retry_count=0");
+
+        let icerik = fs::read_to_string(log_dosya_yolu()).expect("log dosyasi olusmaliydi");
+        assert!(
+            icerik.contains("[olcum] login_total_ms=1234 sonuc=ok retry_count=0"),
+            "olcum satiri log dosyasina yazilmali, dosya: {}",
+            icerik
+        );
+    }
 }

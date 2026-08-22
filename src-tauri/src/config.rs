@@ -6,6 +6,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::errors::GSBError;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+#[cfg_attr(test, allow(dead_code))]
+pub const VERI_DIZINI_ENV: &str = "GSB_VERI_DIZINI";
 pub const PORTAL_HOST: &str = "wifi.gsb.gov.tr";
 pub const GIRIS_URL: &str = "https://wifi.gsb.gov.tr/j_spring_security_check";
 pub const GITHUB_URL: &str = "https://github.com/Toxpox/GSB-WiFi-AutoLogin";
@@ -203,7 +205,16 @@ fn ayar_hatasi(mesaj: impl ToString, kullanici_mesaji: &str) -> GSBError {
     }
 }
 
+#[cfg(test)]
 fn ayar_dizini() -> PathBuf {
+    std::env::temp_dir().join(format!("gsb-test-{}", std::process::id()))
+}
+
+#[cfg(not(test))]
+fn ayar_dizini() -> PathBuf {
+    if let Some(ozel) = std::env::var_os(VERI_DIZINI_ENV) {
+        return PathBuf::from(ozel);
+    }
     dirs::data_local_dir()
         .or_else(dirs::config_dir)
         .or_else(|| std::env::current_dir().ok())
