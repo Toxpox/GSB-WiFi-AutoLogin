@@ -110,6 +110,7 @@ fn kota_normalize(key: &str) -> String {
 }
 
 pub fn bilgi_cek(html: &str) -> KullaniciBilgi {
+    let olcer = crate::olcum::AsamaOlcer::basla(crate::olcum::Asama::Parse);
     let document = Html::parse_document(html);
     let mut bilgi = KullaniciBilgi {
         isim: "Kullanıcı".into(),
@@ -126,6 +127,8 @@ pub fn bilgi_cek(html: &str) -> KullaniciBilgi {
 
     bilgi.kota = kota_cek(&document);
     bilgi.kota_doldu = kota_doldu_mu(&document);
+    let sonuc: Result<(), ()> = Ok(());
+    olcer.bitir(&sonuc);
     bilgi
 }
 

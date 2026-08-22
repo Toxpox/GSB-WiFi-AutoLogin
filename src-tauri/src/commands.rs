@@ -553,10 +553,14 @@ async fn tcp_testi(ip: &str, port: u16) -> bool {
     } else {
         format!("{}:{}", ip, port)
     };
-    matches!(
+    let olcer = crate::olcum::AsamaOlcer::basla(crate::olcum::Asama::TcpConnect);
+    let baglandi = matches!(
         tokio::time::timeout(Duration::from_secs(3), tokio::net::TcpStream::connect(&adr)).await,
         Ok(Ok(_))
-    )
+    );
+    let sonuc: Result<(), ()> = if baglandi { Ok(()) } else { Err(()) };
+    olcer.bitir(&sonuc);
+    baglandi
 }
 
 #[tauri::command]
@@ -848,6 +852,7 @@ async fn yeniden_baglanmayi_dene(app: &AppHandle, sessiz_aktif: bool) {
         "Bağlantı kontrolü: oturum düşmüş, yeniden bağlanılıyor…".to_string(),
     );
 
+    let yeniden_olcer = crate::olcum::AsamaOlcer::basla(crate::olcum::Asama::YenidenBaglanmaToplam);
     let sonuc = async {
         {
             let mut client = state.client.lock().await;
@@ -857,6 +862,7 @@ async fn yeniden_baglanmayi_dene(app: &AppHandle, sessiz_aktif: bool) {
         network::giris_yap(&client, config::GIRIS_URL, &kullanici, &sifre).await
     }
     .await;
+    yeniden_olcer.bitir(&sonuc);
 
     match sonuc {
         Ok(network::GirisYaniti { html, .. }) => {

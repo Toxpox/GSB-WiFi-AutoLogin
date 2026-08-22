@@ -1,5 +1,6 @@
 use crate::config::*;
 use crate::errors::*;
+use crate::olcum::{Asama, AsamaOlcer};
 use crate::parser;
 use reqwest::header::LOCATION;
 use reqwest::{cookie::Jar, redirect::Policy, Client, ClientBuilder};
@@ -109,19 +110,22 @@ pub async fn ip_bul(url: &str) -> Result<String, GSBError> {
         host: host.to_string(),
         kullanici_mesaji: "Sunucuya ulasilamiyor. VPN aktifse devre disi birakin.".into(),
     };
+    let olcer = AsamaOlcer::basla(Asama::Dns);
     let addr = tokio::time::timeout(
         Duration::from_secs(DNS_TIMEOUT_SECS),
         tokio::net::lookup_host(format!("{}:{}", host, port)),
     )
     .await
-    .map_err(|_| dns_hatasi())?
-    .map_err(|_| dns_hatasi())?
-    .next()
-    .ok_or_else(|| GSBError::DNSHatasi {
-        host: host.to_string(),
-        kullanici_mesaji: "DNS cozumlenemedi".into(),
-    })?;
-    Ok(addr.ip().to_string())
+    .map_err(|_| dns_hatasi())
+    .and_then(|sonuc| sonuc.map_err(|_| dns_hatasi()))
+    .and_then(|mut adresler| {
+        adresler.next().ok_or_else(|| GSBError::DNSHatasi {
+            host: host.to_string(),
+            kullanici_mesaji: "DNS cozumlenemedi".into(),
+        })
+    });
+    olcer.bitir(&addr);
+    Ok(addr?.ip().to_string())
 }
 
 pub async fn giris_yap(
@@ -138,16 +142,23 @@ pub async fn giris_yap(
 
     let mut son_hata: Option<GSBError> = None;
     let biten_sure = tokio::time::Instant::now() + Duration::from_secs(LOGIN_BUTCE_SECS);
+    let toplam_olcer = AsamaOlcer::basla(Asama::LoginToplam);
 
     for deneme in 1..=MAX_DENEME {
+        let deneme_olcer = AsamaOlcer::basla(Asama::LoginDenemesi);
         match client.post(url).form(&veri).send().await {
             Ok(r) => {
                 let status = r.status();
                 let final_url = r.url().to_string();
                 let ip = r.remote_addr().map(|adres| adres.ip().to_string());
+                let govde_olcer = AsamaOlcer::basla(Asama::Body);
                 let body = match sinirli_govde(r, PORTAL_BODY_LIMIT).await {
-                    Ok(body) => body,
+                    Ok(body) => {
+                        govde_olcer.bitir::<_, GSBError>(&Ok(()));
+                        body
+                    }
                     Err(e) => {
+                        govde_olcer.bitir::<(), _>(&Err(&e));
                         son_hata = Some(e);
                         String::new()
                     }
@@ -192,6 +203,9 @@ pub async fn giris_yap(
                             });
                         }
                     }
+                    let basarili: Result<(), GSBError> = Ok(());
+                    deneme_olcer.bitir(&basarili);
+                    toplam_olcer.bitir_ek(&basarili, &format!("retry_count={}", deneme - 1));
                     return Ok(GirisYaniti { html: body, ip });
                 }
             }
@@ -209,12 +223,22 @@ pub async fn giris_yap(
                 match karar {
                     DenemeKarari::Belirsiz => {
                         if let Ok(html) = oturum_bilgisi_getir(client).await {
+                            let basarili: Result<(), GSBError> = Ok(());
+                            deneme_olcer.bitir(&basarili);
+                            toplam_olcer.bitir_ek(
+                                &basarili,
+                                &format!("retry_count={} dogrulama=1", deneme - 1),
+                            );
                             return Ok(GirisYaniti { html, ip: None });
                         }
                     }
-                    DenemeKarari::Kesin => break,
+                    DenemeKarari::Kesin => {
+                        deneme_olcer.bitir::<(), _>(&Err(&()));
+                        break;
+                    }
                     DenemeKarari::GuvenliTekrar => {}
                 }
+                deneme_olcer.bitir::<(), _>(&Err(&()));
             }
         }
 
@@ -229,6 +253,7 @@ pub async fn giris_yap(
         }
     }
 
+    toplam_olcer.bitir_ek::<(), _>(&Err(&()), &format!("retry_count={}", MAX_DENEME - 1));
     Err(son_hata.unwrap_or(GSBError::AgHatasi {
         mesaj: "Baglanti kurulamadi".into(),
         kullanici_mesaji: "GSB WiFi agina bagli oldugunuzdan emin olun.".into(),
@@ -739,5 +764,166 @@ mod tests {
 
         assert!(hata.is_timeout());
         assert_eq!(deneme_karari(&hata), DenemeKarari::Belirsiz);
+    }
+
+    const OTURUM_HTML: &str =
+        "<div id=\"content-div\"><center><span class=\"myinfo\">TEST</span></center></div>";
+    const LOGIN_HTML: &str =
+        "<form action=\"/j_spring_security_check\"><input name=\"j_username\"><input name=\"j_password\"></form>";
+
+    async fn sirali_sunucu(yanitlar: Vec<Vec<u8>>) -> String {
+        let dinleyici = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let adres = dinleyici.local_addr().unwrap();
+
+        tokio::spawn(async move {
+            use tokio::io::{AsyncReadExt, AsyncWriteExt};
+            for yanit in yanitlar {
+                let Ok((mut soket, _)) = dinleyici.accept().await else {
+                    return;
+                };
+                let mut tampon = [0u8; 4096];
+                let _ = soket.read(&mut tampon).await;
+                let _ = soket.write_all(&yanit).await;
+                let _ = soket.shutdown().await;
+            }
+        });
+
+        format!("http://{}/", adres)
+    }
+
+    fn html_yanit(govde: &str) -> Vec<u8> {
+        format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            govde.len(),
+            govde
+        )
+        .into_bytes()
+    }
+
+    fn gzip_yanit(govde: &str) -> Vec<u8> {
+        use std::io::Write;
+
+        let mut deflate = Vec::new();
+        for (i, parca) in govde.as_bytes().chunks(65535).enumerate() {
+            let son = (i + 1) * 65535 >= govde.len();
+            deflate.push(if son { 1 } else { 0 });
+            deflate
+                .write_all(&(parca.len() as u16).to_le_bytes())
+                .unwrap();
+            deflate
+                .write_all(&(!(parca.len() as u16)).to_le_bytes())
+                .unwrap();
+            deflate.write_all(parca).unwrap();
+        }
+
+        let mut govde_gz = vec![0x1f, 0x8b, 0x08, 0, 0, 0, 0, 0, 0, 0xff];
+        govde_gz.extend_from_slice(&deflate);
+        govde_gz.extend_from_slice(&crc32(govde.as_bytes()).to_le_bytes());
+        govde_gz.extend_from_slice(&(govde.len() as u32).to_le_bytes());
+
+        let mut yanit = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Encoding: gzip\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            govde_gz.len()
+        )
+        .into_bytes();
+        yanit.extend_from_slice(&govde_gz);
+        yanit
+    }
+
+    fn crc32(veri: &[u8]) -> u32 {
+        let mut crc = 0xffff_ffffu32;
+        for &bayt in veri {
+            crc ^= bayt as u32;
+            for _ in 0..8 {
+                let maske = (crc & 1).wrapping_neg();
+                crc = (crc >> 1) ^ (0xedb8_8320 & maske);
+            }
+        }
+        !crc
+    }
+
+    #[tokio::test]
+    async fn basarili_login_authenticated_html_dondurur() {
+        let url = sirali_sunucu(vec![html_yanit(OTURUM_HTML)]).await;
+        let client = Client::builder().build().unwrap();
+
+        let yanit = giris_yap(&client, &url, "kullanici", "sifre")
+            .await
+            .expect("oturum acik sayfa basarili sayilmaliydi");
+
+        assert!(yanit.html.contains("content-div"));
+        assert!(yanit.ip.is_some(), "IP remote_addr'dan gelmeliydi");
+    }
+
+    #[tokio::test]
+    async fn login_formuna_donus_kimlik_hatasi_uretir() {
+        let url = sirali_sunucu(vec![html_yanit(LOGIN_HTML)]).await;
+        let client = Client::builder().build().unwrap();
+
+        let hata = giris_yap(&client, &url, "kullanici", "yanlis")
+            .await
+            .expect_err("login formu basari sayilmamali");
+
+        assert!(matches!(hata, GSBError::GirisBasarisiz { .. }));
+    }
+
+    #[tokio::test]
+    async fn gzip_yanit_decode_edilir() {
+        let url = sirali_sunucu(vec![gzip_yanit(OTURUM_HTML)]).await;
+        let client = Client::builder().gzip(true).build().unwrap();
+
+        let yanit = giris_yap(&client, &url, "kullanici", "sifre")
+            .await
+            .expect("gzip yanit decode edilip basarili sayilmaliydi");
+
+        assert!(yanit.html.contains("content-div"));
+    }
+
+    #[tokio::test]
+    async fn gzip_decode_sonrasi_limit_uygulanir() {
+        let buyuk = "y".repeat(200 * 1024);
+        let url = sirali_sunucu(vec![gzip_yanit(&buyuk)]).await;
+        let client = Client::builder().gzip(true).build().unwrap();
+        let yanit = client.get(&url).send().await.unwrap();
+
+        let sonuc = sinirli_govde(yanit, 64 * 1024).await;
+
+        assert!(
+            matches!(sonuc, Err(GSBError::AgHatasi { .. })),
+            "decode sonrasi buyuyen govde limiti asmali"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn sunucu_hatasindan_sonra_tekrar_denenir() {
+        let hata_yaniti =
+            b"HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                .to_vec();
+        let url = sirali_sunucu(vec![hata_yaniti, html_yanit(OTURUM_HTML)]).await;
+        let client = Client::builder().build().unwrap();
+
+        let yanit = giris_yap(&client, &url, "kullanici", "sifre")
+            .await
+            .expect("503 sonrasi ikinci deneme basarili olmaliydi");
+
+        assert!(yanit.html.contains("content-div"));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn asiri_buyuk_login_yaniti_reddedilir() {
+        let dev_govde = "z".repeat(PORTAL_BODY_LIMIT + 1024);
+        let url = sirali_sunucu(vec![
+            html_yanit(&dev_govde),
+            html_yanit(&dev_govde),
+            html_yanit(&dev_govde),
+        ])
+        .await;
+        let client = Client::builder().build().unwrap();
+
+        let hata = giris_yap(&client, &url, "kullanici", "sifre")
+            .await
+            .expect_err("limit asan govde kabul edilmemeli");
+
+        assert!(matches!(hata, GSBError::AgHatasi { .. }));
     }
 }
