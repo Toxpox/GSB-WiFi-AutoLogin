@@ -38,6 +38,10 @@ fn portal_client_builder(jar: Arc<Jar>) -> ClientBuilder {
         .read_timeout(Duration::from_secs(READ_TIMEOUT_SECS))
         .user_agent(PORTAL_USER_AGENT)
         .cookie_provider(jar)
+        .http1_only()
+        .pool_idle_timeout(Duration::from_secs(POOL_IDLE_TIMEOUT_SECS))
+        .tcp_keepalive(Duration::from_secs(TCP_KEEPALIVE_SECS))
+        .tcp_nodelay(true)
 }
 
 fn client_build_hatasi(e: reqwest::Error) -> GSBError {
