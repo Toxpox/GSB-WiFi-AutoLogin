@@ -8,8 +8,6 @@ function girisBtnYukleniyor(btn, yukleniyor) {
     btn.innerHTML = yukleniyor ? BAGLANIYOR_YAZI : BAGLAN_YAZI;
 }
 
-// otomatik=true: acilis/tepsi kaynakli giris — hata durumunda modal acmaz,
-// yalnizca log + durum cizgisi gunceller. Maksimum cihaz sorusu her zaman sorulur.
 async function girisBaslat(otomatik) {
     if (girisAktif) return;
 
@@ -87,8 +85,7 @@ async function girisBaslat(otomatik) {
 async function hataIsle(hata, kullanici, sifre, otomatik) {
     switch (hata.tip) {
         case 'MaksimumCihaz':
-            // Otomatik giriste de kullanici onayina birakilir; baska cihazin
-            // baglantisi sessizce dusurulmez.
+
             await maksimumCihazSor(hata.detay.cihaz_bilgisi, kullanici, sifre);
             break;
         case 'GirisBasarisiz':
@@ -153,7 +150,6 @@ async function maksimumCihazSor(bilgi, kullanici, sifre) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Not: dogrudan girisBaslat baglanirsa MouseEvent "otomatik" parametresine sizar.
     document.getElementById('giris-btn').addEventListener('click', function() {
         girisBaslat(false);
     });

@@ -1,4 +1,3 @@
-// GSB WiFi AutoLogin - Rust & Tauri
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod ag_olay;
@@ -67,8 +66,6 @@ fn tepsi_olustur(app: &tauri::App) -> tauri::Result<()> {
 }
 
 fn main() {
-    // Autostart girisinden "--sessiz" ile gelindiyse pencere acilmadan,
-    // tepside baslar.
     let sessiz = std::env::args().any(|arg| arg == "--sessiz");
 
     tauri::Builder::default()
@@ -86,8 +83,7 @@ fn main() {
             }
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(commands::yeniden_baglanma_dongusu(handle));
-            // Yerel ag-olayi dinleyicisi: IP arayuzu degisince yeniden baglanma
-            // dongusunu aninda uyandirir (Wi-Fi baglandigi an giris denenir).
+
             ag_olay::ag_degisikligini_dinle(app.state::<AppState>().ag_olay.clone());
             Ok(())
         })

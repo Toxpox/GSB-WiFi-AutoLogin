@@ -42,7 +42,7 @@ jobs:
 
       - name: Cargo clippy
         working-directory: src-tauri
-        run: cargo clippy --locked -- -D warnings
+        run: cargo clippy --locked --all-targets -- -D warnings
 
       - name: Frontend syntax check
         shell: pwsh
@@ -51,6 +51,7 @@ jobs:
           node --check frontend/js/giris.js
           node --check frontend/js/log.js
           node --check frontend/js/hosgeldin.js
+          node --check frontend/js/tani.js
 
       - name: Version consistency
         shell: pwsh

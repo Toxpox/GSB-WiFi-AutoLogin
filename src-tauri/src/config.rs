@@ -15,8 +15,7 @@ pub const INDEX_URL: &str = "https://wifi.gsb.gov.tr/index.html";
 pub const LOGOUT_URL: &str = "https://wifi.gsb.gov.tr/logout";
 pub const CIKIS_SON_URL: &str = "https://wifi.gsb.gov.tr/cikisSon.html?logout=1";
 pub const TIMEOUT_SECS: u64 = 15;
-// Yeniden baglanma kontrolu: oturumun dustugunu anlamak icin Windows'un
-// kendi NCSI ucu kullanilir; captive portal araya girerse beklenen govde donmez.
+
 pub const YENIDEN_BAGLAN_ARALIK_SAAT: u64 = 12;
 pub const BAGLANTI_TEST_URL: &str = "http://www.msftconnecttest.com/connecttest.txt";
 pub const BAGLANTI_TEST_BEKLENEN: &str = "Microsoft Connect Test";
@@ -27,8 +26,6 @@ pub const USER_AGENT: &str = concat!("GSB-WiFi-AutoLogin/", env!("CARGO_PKG_VERS
 pub const PORTAL_USER_AGENT: &str =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36";
 
-/// Kullanici tarafindan degistirilebilen uygulama ayarlari (settings.json).
-/// Profil deposundan ayri tutulur; eksik alanlar varsayilana duser.
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct UygulamaAyarlari {
@@ -51,8 +48,6 @@ impl Default for UygulamaAyarlari {
     }
 }
 
-/// Ayni kota esigi icin tekrar tekrar bildirim gondermemek icin kalici durum.
-/// Kota yenilenip esigin ustune cikinca sifirlanir.
 #[derive(Serialize, Deserialize, Clone, Copy, Default, PartialEq, Eq, Debug)]
 #[serde(default)]
 pub struct BildirimDurumu {
@@ -84,11 +79,8 @@ pub fn bildirim_durumu_yaz(durum: &BildirimDurumu) -> Result<(), GSBError> {
     )
 }
 
-/// Gunluk kota anlik goruntusu (kota_gecmisi.json). Her basarili giriste
-/// o gune ait kayit guncellenir; grafik ve tukenme tahmini icin kullanilir.
 #[derive(Serialize, Deserialize, Clone, Default, PartialEq, Debug)]
 pub struct KotaKaydi {
-    /// Yerel tarih, YYYY-MM-DD.
     pub tarih: String,
     pub kalan_mb: f64,
     pub toplam_mb: f64,
@@ -110,8 +102,6 @@ pub fn kota_gecmisi_oku() -> Vec<KotaKaydi> {
         .unwrap_or_default()
 }
 
-/// Bugune ait kaydi ekler/gunceller, tarihe gore siralar ve `max_gun`
-/// kaydi asarsa en eskileri kirpar. Saf fonksiyon (dosya I/O yok) — test edilebilir.
 pub fn kota_gecmisi_birlestir(
     mut gecmis: Vec<KotaKaydi>,
     kayit: KotaKaydi,
@@ -162,8 +152,7 @@ pub struct KayitliProfil {
     pub sifreli: bool,
     #[serde(default)]
     pub son_kullanim: u64,
-    /// Kullanicinin verdigi takma ad; duz metin saklanir (kimlik bilgisi
-    /// icermez, TC girisi takma_ad_dogrula ile engellenir).
+
     #[serde(default)]
     pub takma_ad: Option<String>,
 }
@@ -253,7 +242,7 @@ pub fn kullanici_kaydet(k: &str, sifre: &str) -> Result<(), GSBError> {
             .map_err(|e| ayar_hatasi(e, "Kullanici bilgileri sifrelenemedi."))?,
         sifreli: true,
         son_kullanim,
-        takma_ad: None, // mevcut profil guncellenirken profili_birlestir korur
+        takma_ad: None,
     };
 
     if let Some(mevcut) = depo
@@ -272,9 +261,6 @@ pub fn kullanici_kaydet(k: &str, sifre: &str) -> Result<(), GSBError> {
     profil_deposu_yaz(&depo)
 }
 
-/// Yeni giris kaydi mevcut profili degistirirken kullanicinin verdigi
-/// takma adi korur; kullanici_kaydet her basarili giriste profili sifirdan
-/// kurdugu icin bu birlestirme olmadan takma ad ilk giriste silinirdi.
 fn profili_birlestir(mevcut: &mut KayitliProfil, mut yeni: KayitliProfil) {
     yeni.takma_ad = mevcut.takma_ad.take();
     *mevcut = yeni;
@@ -288,7 +274,7 @@ pub fn profilleri_listele() -> Vec<KullaniciProfiliOzet> {
 fn takma_ad_dogrula(ad: &str) -> Result<Option<String>, GSBError> {
     let ad = ad.trim();
     if ad.is_empty() {
-        return Ok(None); // bos ad = takma adi kaldir
+        return Ok(None);
     }
     if ad.chars().count() > 24 {
         return Err(ayar_hatasi(
@@ -296,7 +282,7 @@ fn takma_ad_dogrula(ad: &str) -> Result<Option<String>, GSBError> {
             "Takma ad en fazla 24 karakter olabilir.",
         ));
     }
-    // Kullanici yanlislikla TC'sini yazmasin; takma ad duz metin saklaniyor.
+
     if ad.len() == 11 && ad.chars().all(|c| c.is_ascii_digit()) {
         return Err(ayar_hatasi(
             "Takma ad TC olamaz",
@@ -381,8 +367,6 @@ fn profil_deposu_oku() -> ProfilAyarlari {
     }
 }
 
-/// Yazma sirasinda kesinti dosyayi bozmasin diye once gecici dosyaya
-/// yazip uzerine tasir.
 fn atomik_yaz(yol: &PathBuf, icerik: &str, hata_mesaji: &str) -> Result<(), GSBError> {
     let gecici = yol.with_extension("json.tmp");
     fs::write(&gecici, icerik).map_err(|e| ayar_hatasi(e, hata_mesaji))?;
@@ -396,7 +380,6 @@ fn profil_deposu_yaz(depo: &ProfilAyarlari) -> Result<(), GSBError> {
     let yol = ayar_yolu()?;
     atomik_yaz(&yol, &json, "Kullanici bilgileri kaydedilemedi.")?;
 
-    // Yeni konuma basariyla yazildiysa exe yanindaki eski dosya artik gereksiz.
     let eski = eski_ayar_yolu();
     if eski != yol && eski.is_file() {
         let _ = fs::remove_file(eski);
@@ -428,8 +411,7 @@ fn tekil_kayittan_depo(veri: KayitliKullanici) -> ProfilAyarlari {
     let username = if veri.sifreli {
         match crate::crypto::coz(&veri.username) {
             Ok(u) => u,
-            // Cozulemeyen eski kayit tasinmasin; sifreli metin kullanici adi
-            // gibi gorunmesin.
+
             Err(_) => return ProfilAyarlari::default(),
         }
     } else {
@@ -462,8 +444,6 @@ fn aktif_profil(depo: &ProfilAyarlari) -> Option<KayitliProfil> {
         .cloned()
 }
 
-/// Profil bilgilerini cozer. Cozme basarisizsa (ornegin kayit baska bir
-/// makinede sifrelendiyse) sifreli metni geri sizdirmamak icin None doner.
 fn profil_coz(profil: &KayitliProfil) -> Option<(String, String)> {
     if profil.sifreli {
         let k = crate::crypto::coz(&profil.username).ok()?;
@@ -527,7 +507,6 @@ pub fn tc_maskele(tc: &str) -> String {
         let son: String = chars[chars.len() - 3..].iter().collect();
         format!("{}****{}", bas, son)
     } else if chars.len() >= 7 {
-        // Kisa girdilerde daha az karakter aciga cikar.
         let bas: String = chars.iter().take(2).collect();
         let son: String = chars[chars.len() - 2..].iter().collect();
         format!("{}****{}", bas, son)
@@ -634,11 +613,11 @@ mod tests {
         assert_eq!(takma_ad_dogrula("").unwrap(), None);
         assert_eq!(takma_ad_dogrula("   ").unwrap(), None);
         assert_eq!(takma_ad_dogrula(" Ali ").unwrap().as_deref(), Some("Ali"));
-        // 24 karakter ustu reddedilir
+
         assert!(takma_ad_dogrula("cok uzun bir takma ad denemesi").is_err());
-        // 11 haneli salt rakam (TC benzeri) reddedilir
+
         assert!(takma_ad_dogrula("12345678901").is_err());
-        // 11 haneli ama rakam degilse kabul
+
         assert!(takma_ad_dogrula("Kardesim 01").is_ok());
     }
 
@@ -665,7 +644,6 @@ mod tests {
             toplam_mb: 10240.0,
         };
 
-        // Ayni gun ikinci kez kaydedilince eklenmez, guncellenir.
         let g = kota_gecmisi_birlestir(
             vec![kayit("2026-06-10", 8000.0)],
             kayit("2026-06-10", 7000.0),
@@ -674,13 +652,11 @@ mod tests {
         assert_eq!(g.len(), 1);
         assert_eq!(g[0].kalan_mb, 7000.0);
 
-        // Farkli gun eklenir ve tarihe gore siralanir.
         let g = kota_gecmisi_birlestir(g, kayit("2026-06-09", 9000.0), 90);
         assert_eq!(g.len(), 2);
         assert_eq!(g[0].tarih, "2026-06-09");
         assert_eq!(g[1].tarih, "2026-06-10");
 
-        // max_gun asilinca en eski kayit kirpilir.
         let g = kota_gecmisi_birlestir(g, kayit("2026-06-11", 6000.0), 2);
         assert_eq!(g.len(), 2);
         assert_eq!(g[0].tarih, "2026-06-10");

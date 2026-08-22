@@ -19,17 +19,28 @@ pub struct FormBilgi {
     pub viewstate: String,
 }
 
-fn kota_normalize(key: &str) -> &str {
-    match key {
-        "Toplam Kota (MB)" | "Total Quota (MB)" => "toplam_mb",
-        "Toplam Kalan Kota (MB)" | "Total Remaining Quota (MB)" => "kalan_mb",
-        "Yenilenme Tarihi" | "Next Refresh Date" => "yenilenme",
-        "Oturum Süresi" | "Session Time" => "oturum_suresi",
-        "Login Zamanı" | "Login Time" => "login_zamani",
-        "Başlangıç Tarihi" | "Start Date" => "baslangic",
-        "Sona Erme Tarihi" | "Expiration Date" => "bitis",
-        "Kalan Kota Zamanı" | "Remaining Quota Time" => "kalan_zaman",
-        other => other,
+fn kota_normalize(key: &str) -> String {
+    let sade: String = turkce_kucult(key)
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    let eslesme = match sade.as_str() {
+        "toplam kota (mb)" | "total quota (mb)" => Some("toplam_mb"),
+        "toplam kalan kota (mb)" | "total remaining quota (mb)" => Some("kalan_mb"),
+        "yenilenme tarihi" | "next refresh date" => Some("yenilenme"),
+        "oturum suresi" | "session time" => Some("oturum_suresi"),
+        "login zamani" | "login time" => Some("login_zamani"),
+        "baslangic tarihi" | "start date" => Some("baslangic"),
+        "sona erme tarihi" | "expiration date" => Some("bitis"),
+        "kalan kota zamani" | "remaining quota time" => Some("kalan_zaman"),
+        _ => None,
+    };
+
+    match eslesme {
+        Some(anahtar) => anahtar.to_string(),
+
+        None => key.trim().to_string(),
     }
 }
 
@@ -41,11 +52,16 @@ pub fn bilgi_cek(html: &str) -> KullaniciBilgi {
     };
 
     let sel = Selector::parse("#content-div > center").unwrap();
-    let Some(blok) = document.select(&sel).next() else {
-        return bilgi;
-    };
+    if let Some(blok) = document.select(&sel).next() {
+        kimlik_alanlarini_doldur(&mut bilgi, &blok);
+    }
 
-    // span.myinfo -> isim
+    bilgi.kota = kota_cek(&document);
+    bilgi.kota_doldu = kota_doldu_mu(&document);
+    bilgi
+}
+
+fn kimlik_alanlarini_doldur(bilgi: &mut KullaniciBilgi, blok: &ElementRef<'_>) {
     let span_sel = Selector::parse("span.myinfo").unwrap();
     if let Some(span) = blok.select(&span_sel).next() {
         let txt: String = span
@@ -60,7 +76,6 @@ pub fn bilgi_cek(html: &str) -> KullaniciBilgi {
         }
     }
 
-    // label.myinfo -> son_giris, konum
     let label_sel = Selector::parse("label.myinfo").unwrap();
     for lbl in blok.select(&label_sel) {
         let txt: String = lbl
@@ -73,10 +88,9 @@ pub fn bilgi_cek(html: &str) -> KullaniciBilgi {
             continue;
         }
         bilgi.detaylar.push(txt.clone());
-        alan_ayikla(&mut bilgi, &txt);
+        alan_ayikla(bilgi, &txt);
     }
 
-    // Fallback: tum label'lara bak
     if bilgi.konum.is_empty() || bilgi.son_giris.is_empty() {
         let all_label_sel = Selector::parse("label").unwrap();
         for lbl in blok.select(&all_label_sel) {
@@ -95,7 +109,7 @@ pub fn bilgi_cek(html: &str) -> KullaniciBilgi {
             }
             let onceki_konum = bilgi.konum.clone();
             let onceki_giris = bilgi.son_giris.clone();
-            alan_ayikla(&mut bilgi, &txt);
+            alan_ayikla(bilgi, &txt);
             if (bilgi.konum != onceki_konum || bilgi.son_giris != onceki_giris)
                 && !bilgi.detaylar.contains(&txt)
             {
@@ -103,15 +117,9 @@ pub fn bilgi_cek(html: &str) -> KullaniciBilgi {
             }
         }
     }
-
-    bilgi.kota = kota_cek(&document);
-    bilgi.kota_doldu = kota_doldu_mu(html);
-    bilgi
 }
 
-/// Türkçe karakterleri ASCII'ye indirger ve küçültür; portal etiketlerini
-/// locale (TR/EN) ve büyük/küçük harf farkından bağımsız eşleştirmek için.
-fn turkce_kucult(metin: &str) -> String {
+pub(crate) fn turkce_kucult(metin: &str) -> String {
     let mut sonuc = String::with_capacity(metin.len());
     for c in metin.chars() {
         match c {
@@ -127,11 +135,9 @@ fn turkce_kucult(metin: &str) -> String {
     sonuc
 }
 
-/// Kota bittiğinde portal kota satırlarını (Toplam/Kalan MB) göstermez; bunun
-/// yerine "Your quota is expired." / "Kotanız doldu." gibi bir uyarı basar.
-/// Bu fonksiyon o uyarıyı yakalayarak kotanın dolduğunu bildirir.
-fn kota_doldu_mu(html: &str) -> bool {
-    let metin = turkce_kucult(html);
+fn kota_doldu_mu(document: &Html) -> bool {
+    let gorunur = gorunur_metin(document);
+    let metin = turkce_kucult(&gorunur);
     const ISARETLER: [&str; 14] = [
         "quota is expired",
         "quota has expired",
@@ -151,13 +157,53 @@ fn kota_doldu_mu(html: &str) -> bool {
     ISARETLER.iter().any(|isaret| metin.contains(isaret))
 }
 
-fn alan_ayikla(bilgi: &mut KullaniciBilgi, txt: &str) {
-    let lower = txt.to_lowercase();
-    if bilgi.son_giris.is_empty()
-        && (lower.contains("son giriş")
-            || lower.contains("son giris")
-            || lower.contains("last login"))
+fn gorunur_metin(document: &Html) -> String {
+    document
+        .root_element()
+        .descendants()
+        .filter_map(|dugum| {
+            let metin = dugum.value().as_text()?;
+            let gizli_altinda = dugum
+                .ancestors()
+                .filter_map(ElementRef::wrap)
+                .any(|element| element_gizli_mi(&element));
+            if gizli_altinda {
+                None
+            } else {
+                Some(&**metin)
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn element_gizli_mi(element: &ElementRef<'_>) -> bool {
+    let deger = element.value();
+    if matches!(deger.name(), "script" | "style" | "template" | "noscript")
+        || deger.attr("hidden").is_some()
+        || deger.attr("inert").is_some()
+        || deger
+            .attr("aria-hidden")
+            .is_some_and(|v| v.trim().eq_ignore_ascii_case("true"))
     {
+        return true;
+    }
+
+    deger.attr("style").is_some_and(|style| {
+        let sade: String = style
+            .chars()
+            .filter(|c| !c.is_ascii_whitespace())
+            .flat_map(char::to_lowercase)
+            .collect();
+        sade.contains("display:none")
+            || sade.contains("visibility:hidden")
+            || sade.contains("visibility:collapse")
+    })
+}
+
+fn alan_ayikla(bilgi: &mut KullaniciBilgi, txt: &str) {
+    let lower = turkce_kucult(txt);
+    if bilgi.son_giris.is_empty() && (lower.contains("son giris") || lower.contains("last login")) {
         if let Some((_, val)) = txt.split_once(':') {
             bilgi.son_giris = val.trim().to_string();
         }
@@ -202,8 +248,7 @@ fn kota_cek(document: &Html) -> HashMap<String, String> {
                 }
 
                 let clean_key = key.trim_end_matches(':');
-                let norm = kota_normalize(clean_key);
-                kota.insert(norm.to_string(), val);
+                kota.insert(kota_normalize(clean_key), val);
             }
         }
     }
@@ -226,9 +271,59 @@ pub fn maksimum_bilgi_cek(html: &str) -> crate::errors::CihazBilgisi {
     bilgi
 }
 
+pub fn maksimum_form_bilgi_cek(html: &str) -> FormBilgi {
+    let document = Html::parse_document(html);
+
+    let form_sel = Selector::parse("#j_idt20_data tr form").unwrap();
+    let Some(form) = document.select(&form_sel).next() else {
+        return FormBilgi::default();
+    };
+
+    let mut bilgi = form_temel_bilgi_cek(&form);
+
+    let btn_sel = Selector::parse("button[type=submit]").unwrap();
+    if let Some(btn) = form.select(&btn_sel).next() {
+        bilgi.buton_id = buton_kimligi(&btn);
+    }
+    bilgi
+}
+
+fn form_temel_bilgi_cek(form: &ElementRef<'_>) -> FormBilgi {
+    let form_id = form
+        .value()
+        .attr("id")
+        .or_else(|| form.value().attr("name"))
+        .unwrap_or("")
+        .to_string();
+    let mut bilgi = FormBilgi {
+        form_id,
+        ..Default::default()
+    };
+
+    let vs_sel = Selector::parse("input[name='javax.faces.ViewState']").unwrap();
+    if let Some(vs) = form.select(&vs_sel).next() {
+        bilgi.viewstate = vs.value().attr("value").unwrap_or("").to_string();
+    }
+
+    bilgi
+}
+
+fn buton_kimligi(btn: &ElementRef<'_>) -> String {
+    btn.value()
+        .attr("name")
+        .or_else(|| btn.value().attr("id"))
+        .unwrap_or("")
+        .to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn html_kota_doldu_mu(html: &str) -> bool {
+        let document = Html::parse_document(html);
+        kota_doldu_mu(&document)
+    }
 
     #[test]
     fn basarili_giris_bilgilerini_ayiklar() {
@@ -304,21 +399,114 @@ mod tests {
 
     #[test]
     fn kota_doldu_uyarisi_tespit_edilir() {
-        // Boş/normal içerikte tetiklenmemeli.
-        assert!(!kota_doldu_mu(
+        assert!(!html_kota_doldu_mu(
             r#"<label>Quota information is updated every 5 m.</label>"#
         ));
-        // İngilizce portal uyarısı.
-        assert!(kota_doldu_mu(
+
+        assert!(html_kota_doldu_mu(
             r#"<label style="color:red;">Your quota is expired.</label>"#
         ));
-        // Türkçe portal uyarısı (Türkçe karakterler dâhil).
-        assert!(kota_doldu_mu(r#"<label>Kotanız doldu.</label>"#));
+
+        assert!(html_kota_doldu_mu(r#"<label>Kotanız doldu.</label>"#));
+    }
+
+    #[test]
+    fn gizli_dom_ve_yorum_icindeki_metin_kotayi_doldurmaz() {
+        assert!(!html_kota_doldu_mu(
+            r#"<script>var msg = "Your quota is expired.";</script>"#
+        ));
+
+        assert!(!html_kota_doldu_mu(
+            r#"<!-- Kotanız doldu. --><p>Hoş geldiniz</p>"#
+        ));
+
+        assert!(!html_kota_doldu_mu(
+            r#"<div hidden>Your quota is expired.</div>"#
+        ));
+        assert!(!html_kota_doldu_mu(
+            r#"<div aria-hidden=" TRUE ">Your quota is expired.</div>"#
+        ));
+        assert!(!html_kota_doldu_mu(
+            r#"<div style="display: none">Your quota is expired.</div>"#
+        ));
+        assert!(!html_kota_doldu_mu(
+            r#"<div style="visibility: hidden">Your quota is expired.</div>"#
+        ));
+        assert!(!html_kota_doldu_mu(
+            r#"<div inert>Your quota is expired.</div>"#
+        ));
+        assert!(!html_kota_doldu_mu(
+            r#"<template>Your quota is expired.</template>"#
+        ));
+        assert!(!html_kota_doldu_mu(
+            r#"<noscript>Your quota is expired.</noscript>"#
+        ));
+
+        assert!(html_kota_doldu_mu(
+            r#"<div><label style="color:red;">Your quota is expired.</label></div>"#
+        ));
+    }
+
+    #[test]
+    fn scriptteki_uyari_kotayi_dolu_saymaz() {
+        let html = r#"
+            <div id="content-div">
+                <center>
+                    <span class="myinfo">TEST KULLANICI</span>
+                    <div id="mainPanel:kotaDisplay">
+                        <table>
+                            <tr>
+                                <td><label>Total Quota (MB):</label></td>
+                                <td><label>5000</label></td>
+                            </tr>
+                            <tr>
+                                <td><label>Total Remaining Quota (MB):</label></td>
+                                <td><label>2500</label></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <script>var uyari = "Your quota is expired.";</script>
+                </center>
+            </div>
+        "#;
+
+        let bilgi = bilgi_cek(html);
+
+        assert_eq!(bilgi.kota.get("kalan_mb").map(String::as_str), Some("2500"));
+        assert!(
+            !bilgi.kota_doldu,
+            "kalan kota 2500 MB iken kota dolu sayılmamalı"
+        );
+    }
+
+    #[test]
+    fn gorunur_kota_uyarisi_sayisal_degere_onceliklidir() {
+        let html = r#"
+            <div id="content-div">
+                <center>
+                    <div id="mainPanel:kotaDisplay">
+                        <table>
+                            <tr>
+                                <td><label>Total Remaining Quota (MB):</label></td>
+                                <td><label>1500</label></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <label style="color:red;">Your quota is expired.</label>
+                </center>
+            </div>
+        "#;
+
+        let bilgi = bilgi_cek(html);
+
+        assert!(
+            bilgi.kota_doldu,
+            "portalın açık kota uyarısı güncelliğini yitirmiş olabilecek sayısal satırla bastırılmamalı"
+        );
     }
 
     #[test]
     fn kota_doldugunda_isaretlenir() {
-        // Kota bittiğinde MB satırları yoktur, yerine uyarı etiketi gelir.
         let html = r#"
             <div id="content-div">
                 <center>
@@ -350,49 +538,86 @@ mod tests {
         assert_eq!(bilgi.isim, "TEST KULLANICI");
         assert_eq!(bilgi.konum, "ABC ÖĞRENCİ YURDU");
     }
-}
 
-pub fn maksimum_form_bilgi_cek(html: &str) -> FormBilgi {
-    let document = Html::parse_document(html);
+    #[test]
+    fn blok_bulunamazsa_bile_kota_ayiklanir() {
+        let html = r#"
+            <div id="content-div">
+                <div class="wrapper">
+                    <center>
+                        <span class="myinfo">TEST KULLANICI</span>
+                        <div id="mainPanel:kotaDisplay">
+                            <table>
+                                <tr>
+                                    <td><label>Total Quota (MB):</label></td>
+                                    <td><label>5000</label></td>
+                                </tr>
+                                <tr>
+                                    <td><label>Total Remaining Quota (MB):</label></td>
+                                    <td><label>0</label></td>
+                                </tr>
+                            </table>
+                            <label style="color:red;">Your quota is expired.</label>
+                        </div>
+                    </center>
+                </div>
+            </div>
+        "#;
 
-    let form_sel = Selector::parse("#j_idt20_data tr form").unwrap();
-    let Some(form) = document.select(&form_sel).next() else {
-        return FormBilgi::default();
-    };
+        let bilgi = bilgi_cek(html);
 
-    let mut bilgi = form_temel_bilgi_cek(&form);
-
-    let btn_sel = Selector::parse("button[type=submit]").unwrap();
-    if let Some(btn) = form.select(&btn_sel).next() {
-        bilgi.buton_id = buton_kimligi(&btn);
+        assert_eq!(
+            bilgi.kota.get("toplam_mb").map(String::as_str),
+            Some("5000")
+        );
+        assert_eq!(bilgi.kota.get("kalan_mb").map(String::as_str), Some("0"));
+        assert!(
+            bilgi.kota_doldu,
+            "blok düzeni değişse de kota-doldu uyarısı görülmeli"
+        );
     }
-    bilgi
-}
 
-fn form_temel_bilgi_cek(form: &ElementRef<'_>) -> FormBilgi {
-    let form_id = form
-        .value()
-        .attr("id")
-        .or_else(|| form.value().attr("name"))
-        .unwrap_or("")
-        .to_string();
-    let mut bilgi = FormBilgi {
-        form_id,
-        ..Default::default()
-    };
+    #[test]
+    fn buyuk_harfli_turkce_etiketler_ayiklanir() {
+        let html = r#"
+            <div id="content-div">
+                <center>
+                    <span class="myinfo">TEST KULLANICI</span>
+                    <label class="myinfo">SON GİRİŞ: 25.04.2026 05:07</label>
+                    <label class="myinfo">KONUM: ABC ÖĞRENCİ YURDU</label>
+                </center>
+            </div>
+        "#;
 
-    let vs_sel = Selector::parse("input[name='javax.faces.ViewState']").unwrap();
-    if let Some(vs) = form.select(&vs_sel).next() {
-        bilgi.viewstate = vs.value().attr("value").unwrap_or("").to_string();
+        let bilgi = bilgi_cek(html);
+
+        assert_eq!(bilgi.son_giris, "25.04.2026 05:07");
+        assert_eq!(bilgi.konum, "ABC ÖĞRENCİ YURDU");
     }
 
-    bilgi
-}
+    #[test]
+    fn kota_anahtarlari_bosluk_farkina_dayanikli() {
+        let html = r#"
+            <div id="mainPanel:kotaDisplay">
+                <table>
+                    <tr>
+                        <td><label>Total  Quota (MB):</label></td>
+                        <td><label>5000</label></td>
+                    </tr>
+                    <tr>
+                        <td><label>TOPLAM KALAN KOTA (MB):</label></td>
+                        <td><label>1234</label></td>
+                    </tr>
+                </table>
+            </div>
+        "#;
 
-fn buton_kimligi(btn: &ElementRef<'_>) -> String {
-    btn.value()
-        .attr("name")
-        .or_else(|| btn.value().attr("id"))
-        .unwrap_or("")
-        .to_string()
+        let bilgi = bilgi_cek(html);
+
+        assert_eq!(
+            bilgi.kota.get("toplam_mb").map(String::as_str),
+            Some("5000")
+        );
+        assert_eq!(bilgi.kota.get("kalan_mb").map(String::as_str), Some("1234"));
+    }
 }

@@ -1,7 +1,5 @@
 const { invoke } = window.__TAURI__.core;
 
-// Tam ekrana gecisi engelle: pencere sabit boyutludur (420x680). F11 ve HTML
-// Fullscreen API ile tam ekrana gecis bloke edilir.
 window.addEventListener('keydown', function(e) {
     if (e.key === 'F11') e.preventDefault();
 }, true);
@@ -18,7 +16,6 @@ let KAYITLI_PROFILLER = [];
 let SECILI_PROFIL_ID = null;
 let VERSIYON_KONTROL_EDILDI = false;
 
-// --- Inline SVG snippets used by JS-rendered nodes ---
 const SVG = {
     close: '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg>',
     eye: '<path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.6"/>',
@@ -35,7 +32,6 @@ const SVG = {
     }
 };
 
-// Ekran yonetimi
 function ekranGoster(id) {
     document.querySelectorAll('.ekran').forEach(e => {
         e.classList.remove('aktif');
@@ -49,7 +45,6 @@ function ekranGoster(id) {
     });
 }
 
-// Durum cizgisi (login ekrani altinda)
 function durumGuncelle(metin, tip) {
     const cizgi = document.getElementById('durum');
     if (!cizgi) return;
@@ -58,12 +53,11 @@ function durumGuncelle(metin, tip) {
     if (yazi) yazi.textContent = metin;
 }
 
-// Backend'in 12 saatte bir yaptigi oturum kontrolunun sonuclarini log paneline yansitir.
 function yenidenBaglanmaDinle() {
     try {
         window.__TAURI__.event.listen('yeniden-baglanma', function(olay) {
             var durum = olay.payload || {};
-            // Backend bu olayi dosyaya zaten yazdi; sadece UI guncellenir.
+
             logYaz(durum.mesaj || 'Bağlantı kontrolü yapıldı', durum.tip || 'bilgi', true);
             if (durum.tip === 'basarili') durumGuncelle('Bağlı', 'basari');
             if (durum.tip === 'hata') durumGuncelle('Bağlantı koptu', 'hata');
@@ -71,7 +65,6 @@ function yenidenBaglanmaDinle() {
     } catch (_) {}
 }
 
-// Sistem tepsisi menusunden gelen Baglan / Cikis Yap komutlari.
 function tepsiOlaylariniDinle() {
     try {
         var ev = window.__TAURI__.event;
@@ -88,7 +81,6 @@ function tepsiOlaylariniDinle() {
     } catch (_) {}
 }
 
-// GSB aginda olup olmadigimizi kontrol eder; degilsek log'a uyari duser.
 async function agDurumunuKontrolEt() {
     try {
         var gsb = await invoke('gsb_aginda');
@@ -98,7 +90,7 @@ async function agDurumunuKontrolEt() {
         }
         return gsb;
     } catch (_) {
-        return true; // kontrol yapilamazsa kullaniciyi engelleme
+        return true;
     }
 }
 
@@ -116,7 +108,6 @@ async function baslatmaYukle() {
 
     var gsbAginda = await agDurumunuKontrolEt();
 
-    // Otomatik giris: ayar acik, kimlik alanlari dolu ve GSB agindaysak.
     var ayarlar = null;
     try { ayarlar = await invoke('ayarlari_al'); } catch (_) {}
     if (ayarlar && ayarlar.otomatik_giris) {
@@ -133,7 +124,6 @@ async function baslatmaYukle() {
     }
 }
 
-// --- Ayarlar Paneli ---
 async function ayarlariAc() {
     try {
         var a = await invoke('ayarlari_al');
@@ -195,7 +185,7 @@ function profilBasHarfleri(label) {
     if (!label) return '??';
     var m = String(label).match(/^\d+/);
     if (m) return m[0].slice(0, 2);
-    // \W Turkce harfleri (Ş, Ü, ı...) sildigi icin Unicode harf eslesmesi kullanilir.
+
     var harfler = String(label).match(/[\p{L}\d]/gu);
     return (harfler ? harfler.slice(0, 2).join('') : '??').toUpperCase() || '??';
 }
@@ -220,7 +210,7 @@ function profilListesiniCiz() {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'token-btn';
-        // Takma ad varken tooltip'te maskeli TC de kalsin: hangi hesap belli olsun.
+
         btn.title = profil.takma_ad
             ? profil.takma_ad + ' (' + (profil.masked_username || '?') + ')'
             : (profil.masked_username || 'Profil');
@@ -278,8 +268,7 @@ async function profilSec(id, secenekler) {
         profilListesiniCiz();
         if (!opts.sessiz) {
             const profil = KAYITLI_PROFILLER.find(function(p) { return p.id === id; });
-            // Fallback ham TC olabilecegi icin (kullanici degiskeni cozulmus
-            // kimlik tasir) asla loglanmaz; dosya loguna kalici yazilirdi.
+
             const ad = (profil && (profil.takma_ad || profil.masked_username)) || 'profil';
             logYaz('Profil seçildi: ' + ad, 'soluk');
         }
@@ -313,7 +302,6 @@ async function profilSil(id, ad) {
     }
 }
 
-// --- Takma ad diyalogu ---
 function takmaAdDiyalogAc(profil) {
     var overlay = document.getElementById('takma-ad-overlay');
     var input = document.getElementById('takma-ad-input');
@@ -382,8 +370,6 @@ async function yeniVersiyonKontrolEt() {
     if (VERSIYON_KONTROL_EDILDI) return;
     VERSIYON_KONTROL_EDILDI = true;
 
-    // Once updater denenir (yalnizca NSIS kurulumunda calisir); portable
-    // veya updater hatasinda eski release-sayfasi akisina dusulur.
     try {
         const bilgi = await invoke('guncelleme_kontrol');
         if (bilgi && bilgi.surum) {
@@ -392,7 +378,6 @@ async function yeniVersiyonKontrolEt() {
         }
         return;
     } catch (_) {
-        // sessizce fallback'e gec
     }
 
     try {
@@ -411,8 +396,6 @@ async function yeniVersiyonKontrolEt() {
     }
 }
 
-// Marka satirindaki kucuk yesil guncelleme butonunu gosterir. Uzun bilgi
-// metni tooltip'te (title), buton etiketi kisa "Güncelle".
 function guncellemeBariGoster(metin, tiklama) {
     var btn = document.getElementById('guncelleme-btn');
     var yazi = document.getElementById('guncelleme-btn-yazi');
@@ -424,8 +407,6 @@ function guncellemeBariGoster(metin, tiklama) {
     btn.classList.remove('gizli');
 }
 
-// Yesil bara tiklaninca calisir: ek onay yok, indirme ilerlemesi barda
-// gosterilir; kurulum bitince installer uygulamayi kapatip yeniden baslatir.
 async function guncellemeKur() {
     var btn = document.getElementById('guncelleme-btn');
     var yazi = document.getElementById('guncelleme-btn-yazi');
@@ -454,7 +435,7 @@ async function guncellemeKur() {
         yazi.textContent = 'Tekrar dene';
         btn.title = 'Güncelleme başarısız — tekrar denemek için tıkla';
         btn.disabled = false;
-        // Update nesnesi tuketildi; tekrar denemede kontrol bastan yapilir.
+
         btn.onclick = function() {
             VERSIYON_KONTROL_EDILDI = false;
             btn.classList.add('gizli');
@@ -465,7 +446,6 @@ async function guncellemeKur() {
     }
 }
 
-// --- Modal Dialog ---
 function modalGoster(baslik, mesaj, tip, butonlar) {
     var overlay = document.getElementById('modal-overlay');
     var ikonEl = document.getElementById('modal-ikon');

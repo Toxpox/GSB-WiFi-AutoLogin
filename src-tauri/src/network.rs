@@ -3,6 +3,7 @@ use crate::errors::*;
 use crate::parser;
 use reqwest::header::LOCATION;
 use reqwest::{cookie::Jar, redirect::Policy, Client, ClientBuilder};
+use scraper::{Html, Selector};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -81,10 +82,6 @@ pub async fn giris_yap(
 
     let mut son_hata: Option<GSBError> = None;
 
-    // Not: Login POST'u idempotent degildir; timeout sonrasi tekrar deneme,
-    // ilk istek sunucuya ulastiysa maksimum cihaz akisini tetikleyebilir.
-    // Portal bu durumu maksimumCihazHakkiDolu yonlendirmesiyle bildirdigi
-    // icin tekrar deneme bilincli olarak korunuyor.
     for deneme in 1..=MAX_DENEME {
         match client.post(url).form(&veri).send().await {
             Ok(r) => {
@@ -103,15 +100,12 @@ pub async fn giris_yap(
                 };
 
                 if status.is_server_error() {
-                    // 5xx gecici sunucu hatasidir; "Giris dogrulanamadi"
-                    // yerine retry/backoff akisina sokulur.
                     son_hata = Some(GSBError::AgHatasi {
                         mesaj: format!("HTTP {}", status),
                         kullanici_mesaji: "Sunucu gecici bir hata dondurdu. Lutfen tekrar deneyin."
                             .into(),
                     });
                 } else if body.is_empty() {
-                    // Body okunamadiginda retry/backoff akisi devam etsin.
                 } else {
                     if final_url.contains("maksimumCihazHakkiDolu") {
                         let cihaz = parser::maksimum_bilgi_cek(&body);
@@ -161,8 +155,6 @@ pub async fn giris_yap(
     }))
 }
 
-/// Internet erisimi var mi? Captive portal oturumu dusmusse NCSI istegi
-/// portala yonlenir ve beklenen govde donmez.
 pub async fn internet_var_mi() -> bool {
     let Ok(client) = ClientBuilder::new()
         .redirect(Policy::none())
@@ -186,10 +178,6 @@ fn ncsi_yaniti_saglam_mi(status: u16, body: &str) -> bool {
     status == 200 && body.contains(BAGLANTI_TEST_BEKLENEN)
 }
 
-/// GSB aginda miyiz? Once DNS: cozulemiyorsa portal erisilemez demektir.
-/// Ozel (RFC 1918) IP'ye cozuluyorsa kesin yurt agindayiz. Genel IP'ye
-/// cozulduyse TCP baglanti denemesiyle dogrulanir; yanlis negatif kullaniciyi
-/// engellememeli.
 pub async fn gsb_aginda_mi() -> bool {
     let Ok(adresler) = tokio::net::lookup_host((PORTAL_HOST, 443)).await else {
         return false;
@@ -216,9 +204,6 @@ fn ozel_ip_mi(ip: &std::net::IpAddr) -> bool {
     }
 }
 
-/// Tanilama icin: portal ana sayfasina (index.html) ulasilip ulasilamadigini
-/// ve HTTP durum kodunu doner. Yonlendirme izlenmez; captive portal araya
-/// girerse durum kodu yine de anlamli kalir.
 pub async fn portal_erisim_testi(clients: &PortalClients) -> Result<u16, GSBError> {
     let yanit = clients
         .no_redirect
@@ -232,10 +217,6 @@ pub async fn portal_erisim_testi(clients: &PortalClients) -> Result<u16, GSBErro
     Ok(yanit.status().as_u16())
 }
 
-/// Aktif oturumla portal ana sayfasini ceker; kullanici/kota bilgisini tasiyan
-/// HTML'i doner. `normal` istemci yonlendirmeleri izledigi icin oturum dustuyse
-/// portal login sayfasina dususur — bu durum tespit edilip anlasilir bir hata
-/// dondurulur (bilgi yenileme komutu icin).
 pub async fn oturum_bilgisi_getir(client: &Client) -> Result<String, GSBError> {
     let yanit = client
         .get(INDEX_URL)
@@ -252,8 +233,6 @@ pub async fn oturum_bilgisi_getir(client: &Client) -> Result<String, GSBError> {
         kullanici_mesaji: "Sunucu yanıtı okunamadı.".into(),
     })?;
 
-    // Oturum dustuyse portal login'e yonlenir (content-div yalnizca oturum
-    // acik sayfada bulunur; giris_yap ile ayni isaret).
     let oturum_dustu = final_url.contains("login.html")
         || final_url.contains("j_spring_security_check")
         || !body.contains("content-div");
@@ -347,16 +326,69 @@ fn cikis_yonlendirme_url(yanit: &reqwest::Response) -> Option<String> {
 }
 
 fn cikis_yaniti_basarili_mi(body: &str, final_url: &str) -> bool {
-    let body_lower = body.to_lowercase();
-    let final_url_lower = final_url.to_lowercase();
+    let body_lower = crate::parser::turkce_kucult(body);
 
     body_lower.contains("j_spring_security_check")
-        || final_url_lower.contains("cikisson")
         || body_lower.contains("basari ile")
-        || body_lower.contains("partial-response")
-            && body_lower.contains("redirect")
-            && (body_lower.contains("login") || body_lower.contains("cikisson"))
-        || final_url_lower.contains("login")
+        || partial_response_cikis_hedefi_mi(body)
+        || cikis_sonuc_yolu_mu(final_url)
+}
+
+fn partial_response_cikis_hedefi_mi(body: &str) -> bool {
+    let document = Html::parse_fragment(body);
+    let Ok(selector) = Selector::parse("partial-response redirect[url]") else {
+        return false;
+    };
+
+    document.select(&selector).any(|redirect| {
+        redirect
+            .value()
+            .attr("url")
+            .is_some_and(cikis_sonuc_hedefi_mi)
+    })
+}
+
+fn cikis_sonuc_yolu_mu(final_url: &str) -> bool {
+    let Ok(url) = url::Url::parse(final_url) else {
+        return false;
+    };
+    url_yolu_cikis_sonucu_mu(&url)
+}
+
+fn cikis_sonuc_hedefi_mi(hedef: &str) -> bool {
+    let url = match url::Url::parse(hedef) {
+        Ok(url) => url,
+        Err(_) => {
+            let Ok(taban) = url::Url::parse("https://portal.invalid/") else {
+                return false;
+            };
+            let Ok(url) = taban.join(hedef) else {
+                return false;
+            };
+            url
+        }
+    };
+    url_yolu_cikis_sonucu_mu(&url)
+}
+
+fn url_yolu_cikis_sonucu_mu(url: &url::Url) -> bool {
+    let Some(son) = url
+        .path_segments()
+        .and_then(|mut parcalar| parcalar.rfind(|parca| !parca.is_empty()))
+    else {
+        return false;
+    };
+
+    let endpoint = son.split(';').next().unwrap_or(son).to_ascii_lowercase();
+    matches!(
+        endpoint.as_str(),
+        "login"
+            | "login.html"
+            | "cikisson"
+            | "cikisson.html"
+            | "cikissonrasi"
+            | "cikissonrasi.html"
+    )
 }
 
 pub async fn onceki_oturumu_kapat(client: &Client, html: &str, login_url: &str) -> bool {
@@ -413,8 +445,88 @@ mod tests {
     #[test]
     fn ncsi_yaniti_dogru_degerlendirilir() {
         assert!(ncsi_yaniti_saglam_mi(200, "Microsoft Connect Test"));
-        // Portal araya girdiginde farkli govde veya yonlendirme doner.
+
         assert!(!ncsi_yaniti_saglam_mi(200, "<html>login</html>"));
         assert!(!ncsi_yaniti_saglam_mi(302, ""));
+    }
+
+    #[test]
+    fn cikis_basarisi_dogru_tespit_edilir() {
+        assert!(cikis_yaniti_basarili_mi(
+            "<form action=\"/j_spring_security_check\">",
+            "https://portal.example/"
+        ));
+        assert!(cikis_yaniti_basarili_mi(
+            "",
+            "https://portal.example/cikisSon.html?logout=1"
+        ));
+        assert!(cikis_yaniti_basarili_mi(
+            "",
+            "https://portal.example/login/"
+        ));
+        assert!(cikis_yaniti_basarili_mi(
+            "",
+            "https://portal.example/login.html;jsessionid=ABC123"
+        ));
+        assert!(cikis_yaniti_basarili_mi(
+            "<partial-response><redirect url=\"/login.html\"/></partial-response>",
+            "https://portal.example/maksimum.html"
+        ));
+        assert!(
+            !cikis_yaniti_basarili_mi(
+                "<partial-response><redirect url=\"/hata.html\"/><changes><update>login hatasi</update></changes></partial-response>",
+                "https://portal.example/maksimum.html"
+            ),
+            "redirect hedefi hata sayfasiyken govdenin baska yerindeki login kelimesi basari sayilmamali"
+        );
+        assert!(
+            !cikis_yaniti_basarili_mi(
+                "<partial-response><redirect url=\"/hata.html?next=login\"/></partial-response>",
+                "https://portal.example/maksimum.html"
+            ),
+            "redirect query'sindeki login kelimesi endpoint eslesmesi degildir"
+        );
+
+        assert!(cikis_yaniti_basarili_mi(
+            "<p>Oturumunuz Başarı ile sonlandırıldı.</p>",
+            "https://portal.example/"
+        ));
+
+        assert!(
+            !cikis_yaniti_basarili_mi("", "https://logineksatolyesi.example/anasayfa"),
+            "host adinin icindeki 'login' basari sayilmamali"
+        );
+        assert!(
+            !cikis_yaniti_basarili_mi("", "https://portal.example/blogindex.html"),
+            "yol adinin icindeki 'login' basari sayilmamali"
+        );
+        assert!(
+            !cikis_yaniti_basarili_mi("", "https://cikissonuc.example/anasayfa"),
+            "host adinin icindeki 'cikisson' basari sayilmamali"
+        );
+        assert!(
+            !cikis_yaniti_basarili_mi("", "https://portal.example/oncikissonuc.html"),
+            "benzer bir yol adi cikis endpoint'i sayilmamali"
+        );
+        assert!(
+            !cikis_yaniti_basarili_mi(
+                "",
+                "https://portal.example/hata.html?next=cikisSonrasi.html"
+            ),
+            "query icindeki cikis endpoint'i son yol bileseni degildir"
+        );
+        assert!(
+            !cikis_yaniti_basarili_mi("", "https://portal.example/login.foo.html"),
+            "ilk nokta oncesi 'login' olan farkli bir dosya eslesmemeli"
+        );
+        assert!(
+            !cikis_yaniti_basarili_mi("", "gecersiz-cikisson-url"),
+            "gecersiz bir URL yalnizca alt dizge nedeniyle basari sayilmamali"
+        );
+
+        assert!(!cikis_yaniti_basarili_mi(
+            "<p>Hata olustu.</p>",
+            "https://portal.example/hata.html"
+        ));
     }
 }
