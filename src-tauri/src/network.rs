@@ -176,11 +176,21 @@ pub async fn giris_yap(
                             kullanici_mesaji: "Kullanici adi veya sifrenizi kontrol edin.".into(),
                         });
                     }
-                    if !body.contains("content-div") {
-                        return Err(GSBError::GirisBasarisiz {
-                            mesaj: "Dogrulanamadi".into(),
-                            kullanici_mesaji: "Giris dogrulanamadi".into(),
-                        });
+                    match parser::sayfa_sinifla(&body) {
+                        parser::PortalSayfa::Authenticated => {}
+                        parser::PortalSayfa::LoginForm => {
+                            return Err(GSBError::GirisBasarisiz {
+                                mesaj: "Login formuna geri donuldu".into(),
+                                kullanici_mesaji: "Kullanici adi veya sifrenizi kontrol edin."
+                                    .into(),
+                            });
+                        }
+                        parser::PortalSayfa::Bilinmiyor => {
+                            return Err(GSBError::GirisBasarisiz {
+                                mesaj: "Dogrulanamadi".into(),
+                                kullanici_mesaji: "Giris dogrulanamadi".into(),
+                            });
+                        }
                     }
                     return Ok(GirisYaniti { html: body, ip });
                 }
@@ -327,7 +337,7 @@ pub async fn oturum_bilgisi_getir(client: &Client) -> Result<String, GSBError> {
 
     let oturum_dustu = final_url.contains("login.html")
         || final_url.contains("j_spring_security_check")
-        || !body.contains("content-div");
+        || parser::sayfa_sinifla(&body) != parser::PortalSayfa::Authenticated;
     if oturum_dustu {
         return Err(GSBError::GirisBasarisiz {
             mesaj: "Oturum dusmus".into(),

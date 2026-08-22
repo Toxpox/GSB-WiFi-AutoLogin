@@ -10,15 +10,62 @@ macro_rules! secici {
 }
 
 secici!(BLOK_SEL, "#content-div > center");
+secici!(BLOK_FALLBACK_SEL, "#content-div center");
 secici!(SPAN_MYINFO_SEL, "span.myinfo");
 secici!(LABEL_MYINFO_SEL, "label.myinfo");
 secici!(LABEL_SEL, "label");
 secici!(TD_SEL, "td");
 secici!(KOTA_TR_SEL, "#mainPanel\\:kotaDisplay tr");
+secici!(KOTA_TR_FALLBACK_SEL, "[id$='kotaDisplay'] tr");
 secici!(CIHAZ_HUCRE_SEL, "#j_idt20_data tr td[role=gridcell]");
+secici!(
+    CIHAZ_HUCRE_FALLBACK_SEL,
+    "[id$='_data'] tr td[role=gridcell]"
+);
 secici!(CIHAZ_FORM_SEL, "#j_idt20_data tr form");
+secici!(CIHAZ_FORM_FALLBACK_SEL, "[id$='_data'] tr form");
 secici!(SUBMIT_SEL, "button[type=submit]");
+secici!(
+    SUBMIT_FALLBACK_SEL,
+    "input[type=submit], button, a.ui-commandlink"
+);
 secici!(VIEWSTATE_SEL, "input[name='javax.faces.ViewState']");
+secici!(
+    LOGIN_FORM_SEL,
+    "input[name='j_username'], input[name='j_password']"
+);
+secici!(CIKIS_SEL, "a[href*='logout'], a[href*='cikis']");
+secici!(ICERIK_SEL, "#content-div");
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PortalSayfa {
+    Authenticated,
+    LoginForm,
+    Bilinmiyor,
+}
+
+pub fn sayfa_sinifla(html: &str) -> PortalSayfa {
+    sayfa_siniflandir(&Html::parse_document(html))
+}
+
+fn sayfa_siniflandir(document: &Html) -> PortalSayfa {
+    if document.select(&LOGIN_FORM_SEL).next().is_some() {
+        return PortalSayfa::LoginForm;
+    }
+
+    let kimlik_var = document.select(&SPAN_MYINFO_SEL).next().is_some()
+        || document.select(&LABEL_MYINFO_SEL).next().is_some();
+    let kota_var = document.select(&KOTA_TR_SEL).next().is_some()
+        || document.select(&KOTA_TR_FALLBACK_SEL).next().is_some();
+    let cikis_var = document.select(&CIKIS_SEL).next().is_some();
+    let icerik_var = document.select(&ICERIK_SEL).next().is_some();
+
+    if icerik_var && (kimlik_var || kota_var || cikis_var) {
+        PortalSayfa::Authenticated
+    } else {
+        PortalSayfa::Bilinmiyor
+    }
+}
 
 #[derive(Debug, Serialize, Clone, Default)]
 pub struct KullaniciBilgi {
@@ -69,7 +116,11 @@ pub fn bilgi_cek(html: &str) -> KullaniciBilgi {
         ..Default::default()
     };
 
-    if let Some(blok) = document.select(&BLOK_SEL).next() {
+    let blok = document
+        .select(&BLOK_SEL)
+        .next()
+        .or_else(|| document.select(&BLOK_FALLBACK_SEL).next());
+    if let Some(blok) = blok {
         kimlik_alanlarini_doldur(&mut bilgi, &blok);
     }
 
@@ -232,7 +283,16 @@ fn alan_ayikla(bilgi: &mut KullaniciBilgi, txt: &str) {
 fn kota_cek(document: &Html) -> HashMap<String, String> {
     let mut kota = HashMap::new();
 
-    for tr in document.select(&KOTA_TR_SEL) {
+    let satirlar: Vec<_> = {
+        let kesin: Vec<_> = document.select(&KOTA_TR_SEL).collect();
+        if kesin.is_empty() {
+            document.select(&KOTA_TR_FALLBACK_SEL).collect()
+        } else {
+            kesin
+        }
+    };
+
+    for tr in satirlar {
         let tds: Vec<_> = tr.select(&TD_SEL).collect();
         if tds.len() >= 2 {
             let key_label = tds[0].select(&LABEL_SEL).next();
@@ -269,19 +329,31 @@ pub fn maksimum_sayfa_cek(html: &str) -> MaksimumSayfaBilgi {
     let document = Html::parse_document(html);
     let mut sayfa = MaksimumSayfaBilgi::default();
 
-    let hucreler: Vec<_> = document.select(&CIHAZ_HUCRE_SEL).collect();
+    let mut hucreler: Vec<_> = document.select(&CIHAZ_HUCRE_SEL).collect();
+    if hucreler.is_empty() {
+        hucreler = document.select(&CIHAZ_HUCRE_FALLBACK_SEL).collect();
+    }
     if hucreler.len() >= 3 {
         sayfa.cihaz.baslangic = hucreler[0].text().collect::<String>().trim().to_string();
         sayfa.cihaz.mac = hucreler[1].text().collect::<String>().trim().to_string();
         sayfa.cihaz.konum = hucreler[2].text().collect::<String>().trim().to_string();
     }
 
-    let Some(form) = document.select(&CIHAZ_FORM_SEL).next() else {
+    let form = document
+        .select(&CIHAZ_FORM_SEL)
+        .next()
+        .or_else(|| document.select(&CIHAZ_FORM_FALLBACK_SEL).next());
+    let Some(form) = form else {
         return sayfa;
     };
 
     sayfa.form = form_temel_bilgi_cek(&form);
-    if let Some(btn) = form.select(&SUBMIT_SEL).next() {
+
+    let buton = form
+        .select(&SUBMIT_SEL)
+        .next()
+        .or_else(|| form.select(&SUBMIT_FALLBACK_SEL).next());
+    if let Some(btn) = buton {
         sayfa.form.buton_id = buton_kimligi(&btn);
     }
     sayfa
@@ -616,5 +688,124 @@ mod tests {
             Some("5000")
         );
         assert_eq!(bilgi.kota.get("kalan_mb").map(String::as_str), Some("1234"));
+    }
+
+    #[test]
+    fn degismis_jsf_idleri_suffix_ile_yakalanir() {
+        let html = r#"
+            <div id="mainPanel:j_idt31:kotaDisplay">
+                <table>
+                    <tr>
+                        <td><label>Total Quota (MB):</label></td>
+                        <td><label>8192</label></td>
+                    </tr>
+                </table>
+            </div>
+        "#;
+
+        let bilgi = bilgi_cek(html);
+
+        assert_eq!(
+            bilgi.kota.get("toplam_mb").map(String::as_str),
+            Some("8192"),
+            "degismis kota paneli ID'si suffix eslesmesiyle bulunmali"
+        );
+    }
+
+    #[test]
+    fn degismis_cihaz_tablosu_idsi_yakalanir() {
+        let html = r#"
+            <table id="j_idt47_data">
+                <tr>
+                    <td role="gridcell">2026-04-24 04:59</td>
+                    <td role="gridcell">AA:BB:CC:DD:EE:FF</td>
+                    <td role="gridcell">Yurt WiFi</td>
+                    <td>
+                        <form id="mainForm">
+                            <input type="submit" name="kesButonu">
+                            <input name="javax.faces.ViewState" value="vs-2">
+                        </form>
+                    </td>
+                </tr>
+            </table>
+        "#;
+
+        let MaksimumSayfaBilgi { cihaz, form } = maksimum_sayfa_cek(html);
+
+        assert_eq!(cihaz.mac, "AA:BB:CC:DD:EE:FF");
+        assert_eq!(form.form_id, "mainForm");
+
+        assert_eq!(form.buton_id, "kesButonu");
+        assert_eq!(form.viewstate, "vs-2");
+    }
+
+    #[test]
+    fn sarmalayici_eklendiginde_isim_alanlari_korunur() {
+        let html = r#"
+            <div id="content-div">
+                <div class="ui-panel">
+                    <center>
+                        <span class="myinfo">TEST KULLANICI</span>
+                        <label class="myinfo">Location : ABC YURDU</label>
+                    </center>
+                </div>
+            </div>
+        "#;
+
+        let bilgi = bilgi_cek(html);
+
+        assert_eq!(bilgi.isim, "TEST KULLANICI");
+        assert_eq!(bilgi.konum, "ABC YURDU");
+    }
+
+    #[test]
+    fn login_sayfasi_authenticated_sayilmaz() {
+        let login = r#"
+            <html><body>
+                <script>var panel = "content-div";</script>
+                <form action="/j_spring_security_check">
+                    <input name="j_username">
+                    <input name="j_password" type="password">
+                </form>
+            </body></html>
+        "#;
+
+        assert_eq!(sayfa_sinifla(login), PortalSayfa::LoginForm);
+    }
+
+    #[test]
+    fn metindeki_content_div_tek_basina_basari_degildir() {
+        let sahte = r#"<html><body><p>content-div</p></body></html>"#;
+
+        assert_eq!(sayfa_sinifla(sahte), PortalSayfa::Bilinmiyor);
+    }
+
+    #[test]
+    fn oturum_acik_sayfa_authenticated_siniflanir() {
+        let acik = r#"
+            <div id="content-div">
+                <center>
+                    <span class="myinfo">TEST KULLANICI</span>
+                </center>
+            </div>
+        "#;
+
+        assert_eq!(sayfa_sinifla(acik), PortalSayfa::Authenticated);
+    }
+
+    #[test]
+    fn sarmalanmis_oturum_sayfasi_authenticated_kalir() {
+        let acik = r#"
+            <div id="content-div">
+                <div class="ui-panel">
+                    <div id="mainPanel:kotaDisplay">
+                        <table><tr><td><label>Total Quota (MB):</label></td>
+                        <td><label>1024</label></td></tr></table>
+                    </div>
+                </div>
+            </div>
+        "#;
+
+        assert_eq!(sayfa_sinifla(acik), PortalSayfa::Authenticated);
     }
 }
