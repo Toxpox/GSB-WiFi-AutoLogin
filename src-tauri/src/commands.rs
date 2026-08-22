@@ -122,9 +122,9 @@ pub async fn giris(
         }
         let client = state.client.lock().await.normal.clone();
 
-        let ip = network::ip_bul(&url).await.ok();
         match network::giris_yap(&client, &url, &kullanici, &sifre).await {
-            Ok(html) => {
+            Ok(yanit) => {
+                let network::GirisYaniti { html, ip } = yanit;
                 *state.son_html.lock().await = html.clone();
                 *state.son_kimlik.lock().await = Some((kullanici.clone(), sifre.clone()));
                 let bilgi = parser::bilgi_cek(&html);
@@ -456,8 +456,9 @@ pub async fn maksimum_cihaz_isle(
         }
         let yeni_client = state.client.lock().await.normal.clone();
 
-        let yeni_html = match network::giris_yap(&yeni_client, &url, &kullanici, &sifre).await {
-            Ok(html) => html,
+        let (yeni_html, ip) = match network::giris_yap(&yeni_client, &url, &kullanici, &sifre).await
+        {
+            Ok(yanit) => (yanit.html, yanit.ip),
             Err(GSBError::MaksimumCihaz { .. }) => {
                 return Err(GSBError::GirisBasarisiz {
                     mesaj: "Maksimum cihaz limiti devam ediyor".into(),
@@ -473,7 +474,6 @@ pub async fn maksimum_cihaz_isle(
         *state.son_html.lock().await = yeni_html.clone();
         *state.son_kimlik.lock().await = Some((kullanici.clone(), sifre.clone()));
         let bilgi = parser::bilgi_cek(&yeni_html);
-        let ip = network::ip_bul(&url).await.ok();
         let kayit = config::kullanici_kaydet(&kullanici, &sifre);
         Ok(giris_sonuc_olustur(bilgi, ip, kayit))
     }
@@ -838,7 +838,7 @@ async fn yeniden_baglanmayi_dene(app: &AppHandle, sessiz_aktif: bool) {
     .await;
 
     match sonuc {
-        Ok(html) => {
+        Ok(network::GirisYaniti { html, .. }) => {
             let bilgi = parser::bilgi_cek(&html);
             *state.son_html.lock().await = html;
             tepsi_ipucu_guncelle(app, "Bağlı");

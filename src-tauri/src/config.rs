@@ -15,6 +15,11 @@ pub const INDEX_URL: &str = "https://wifi.gsb.gov.tr/index.html";
 pub const LOGOUT_URL: &str = "https://wifi.gsb.gov.tr/logout";
 pub const CIKIS_SON_URL: &str = "https://wifi.gsb.gov.tr/cikisSon.html?logout=1";
 pub const TIMEOUT_SECS: u64 = 15;
+pub const CONNECT_TIMEOUT_SECS: u64 = 4;
+pub const READ_TIMEOUT_SECS: u64 = 8;
+pub const DNS_TIMEOUT_SECS: u64 = 3;
+pub const PORTAL_BODY_LIMIT: usize = 256 * 1024;
+pub const NCSI_BODY_LIMIT: usize = 1024;
 
 pub const YENIDEN_BAGLAN_ARALIK_SAAT: u64 = 12;
 pub const BAGLANTI_TEST_URL: &str = "http://www.msftconnecttest.com/connecttest.txt";

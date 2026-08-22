@@ -5,6 +5,7 @@ use reqwest::header::LOCATION;
 use reqwest::{cookie::Jar, redirect::Policy, Client, ClientBuilder};
 use scraper::{Html, Selector};
 use std::sync::Arc;
+use std::sync::OnceLock;
 use std::time::Duration;
 
 #[derive(Clone)]
@@ -31,8 +32,9 @@ pub fn client_olustur() -> Result<PortalClients, GSBError> {
 
 fn portal_client_builder(jar: Arc<Jar>) -> ClientBuilder {
     ClientBuilder::new()
-        .danger_accept_invalid_certs(true)
         .timeout(Duration::from_secs(TIMEOUT_SECS))
+        .connect_timeout(Duration::from_secs(CONNECT_TIMEOUT_SECS))
+        .read_timeout(Duration::from_secs(READ_TIMEOUT_SECS))
         .user_agent(PORTAL_USER_AGENT)
         .cookie_provider(jar)
 }
@@ -42,6 +44,34 @@ fn client_build_hatasi(e: reqwest::Error) -> GSBError {
         mesaj: e.to_string(),
         kullanici_mesaji: "HTTP istemcisi olusturulamadi".into(),
     }
+}
+
+async fn sinirli_govde(yanit: reqwest::Response, limit: usize) -> Result<String, GSBError> {
+    let mut yanit = yanit;
+    let mut govde: Vec<u8> = Vec::new();
+
+    loop {
+        let parca = yanit.chunk().await.map_err(|e| GSBError::AgHatasi {
+            mesaj: e.to_string(),
+            kullanici_mesaji: "Sunucu yaniti okunamadi. Lutfen tekrar deneyin.".into(),
+        })?;
+        let Some(parca) = parca else { break };
+        if govde.len() + parca.len() > limit {
+            return Err(GSBError::AgHatasi {
+                mesaj: format!("Yanit govdesi {} bayt sinirini asti", limit),
+                kullanici_mesaji: "Sunucu beklenmeyen buyuklukte bir yanit dondurdu.".into(),
+            });
+        }
+        govde.extend_from_slice(&parca);
+    }
+
+    Ok(String::from_utf8_lossy(&govde).into_owned())
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct GirisYaniti {
+    pub html: String,
+    pub ip: Option<String>,
 }
 
 pub async fn ip_bul(url: &str) -> Result<String, GSBError> {
@@ -54,17 +84,22 @@ pub async fn ip_bul(url: &str) -> Result<String, GSBError> {
         kullanici_mesaji: "URL hatali".into(),
     })?;
     let port = parsed.port_or_known_default().unwrap_or(443);
-    let addr = tokio::net::lookup_host(format!("{}:{}", host, port))
-        .await
-        .map_err(|_| GSBError::DNSHatasi {
-            host: host.to_string(),
-            kullanici_mesaji: "Sunucuya ulasilamiyor. VPN aktifse devre disi birakin.".into(),
-        })?
-        .next()
-        .ok_or_else(|| GSBError::DNSHatasi {
-            host: host.to_string(),
-            kullanici_mesaji: "DNS cozumlenemedi".into(),
-        })?;
+    let dns_hatasi = || GSBError::DNSHatasi {
+        host: host.to_string(),
+        kullanici_mesaji: "Sunucuya ulasilamiyor. VPN aktifse devre disi birakin.".into(),
+    };
+    let addr = tokio::time::timeout(
+        Duration::from_secs(DNS_TIMEOUT_SECS),
+        tokio::net::lookup_host(format!("{}:{}", host, port)),
+    )
+    .await
+    .map_err(|_| dns_hatasi())?
+    .map_err(|_| dns_hatasi())?
+    .next()
+    .ok_or_else(|| GSBError::DNSHatasi {
+        host: host.to_string(),
+        kullanici_mesaji: "DNS cozumlenemedi".into(),
+    })?;
     Ok(addr.ip().to_string())
 }
 
@@ -73,7 +108,7 @@ pub async fn giris_yap(
     url: &str,
     kullanici: &str,
     sifre: &str,
-) -> Result<String, GSBError> {
+) -> Result<GirisYaniti, GSBError> {
     let veri = [
         ("j_username", kullanici),
         ("j_password", sifre),
@@ -87,14 +122,11 @@ pub async fn giris_yap(
             Ok(r) => {
                 let status = r.status();
                 let final_url = r.url().to_string();
-                let body = match r.text().await {
+                let ip = r.remote_addr().map(|adres| adres.ip().to_string());
+                let body = match sinirli_govde(r, PORTAL_BODY_LIMIT).await {
                     Ok(body) => body,
                     Err(e) => {
-                        son_hata = Some(GSBError::AgHatasi {
-                            mesaj: e.to_string(),
-                            kullanici_mesaji: "Sunucu yaniti okunamadi. Lutfen tekrar deneyin."
-                                .into(),
-                        });
+                        son_hata = Some(e);
                         String::new()
                     }
                 };
@@ -128,7 +160,7 @@ pub async fn giris_yap(
                             kullanici_mesaji: "Giris dogrulanamadi".into(),
                         });
                     }
-                    return Ok(body);
+                    return Ok(GirisYaniti { html: body, ip });
                 }
             }
             Err(e) if e.is_timeout() => {
@@ -156,18 +188,25 @@ pub async fn giris_yap(
 }
 
 pub async fn internet_var_mi() -> bool {
-    let Ok(client) = ClientBuilder::new()
-        .redirect(Policy::none())
-        .timeout(Duration::from_secs(5))
-        .build()
-    else {
+    static NCSI_CLIENT: OnceLock<Option<Client>> = OnceLock::new();
+
+    let Some(client) = NCSI_CLIENT.get_or_init(|| {
+        ClientBuilder::new()
+            .redirect(Policy::none())
+            .timeout(Duration::from_secs(5))
+            .connect_timeout(Duration::from_secs(CONNECT_TIMEOUT_SECS))
+            .build()
+            .ok()
+    }) else {
         return false;
     };
 
     match client.get(BAGLANTI_TEST_URL).send().await {
         Ok(yanit) => {
             let status = yanit.status().as_u16();
-            let body = yanit.text().await.unwrap_or_default();
+            let body = sinirli_govde(yanit, NCSI_BODY_LIMIT)
+                .await
+                .unwrap_or_default();
             ncsi_yaniti_saglam_mi(status, &body)
         }
         Err(_) => false,
@@ -175,7 +214,7 @@ pub async fn internet_var_mi() -> bool {
 }
 
 fn ncsi_yaniti_saglam_mi(status: u16, body: &str) -> bool {
-    status == 200 && body.contains(BAGLANTI_TEST_BEKLENEN)
+    status == 200 && body.trim() == BAGLANTI_TEST_BEKLENEN
 }
 
 pub async fn gsb_aginda_mi() -> bool {
@@ -228,10 +267,7 @@ pub async fn oturum_bilgisi_getir(client: &Client) -> Result<String, GSBError> {
                 .into(),
         })?;
     let final_url = yanit.url().to_string();
-    let body = yanit.text().await.map_err(|e| GSBError::AgHatasi {
-        mesaj: e.to_string(),
-        kullanici_mesaji: "Sunucu yanıtı okunamadı.".into(),
-    })?;
+    let body = sinirli_govde(yanit, PORTAL_BODY_LIMIT).await?;
 
     let oturum_dustu = final_url.contains("login.html")
         || final_url.contains("j_spring_security_check")
@@ -261,10 +297,7 @@ pub async fn cikis_yap(clients: &PortalClients) -> Result<bool, GSBError> {
     if ilk_yanit.status().is_success() {
         let status = ilk_yanit.status();
         let final_url = ilk_yanit.url().to_string();
-        let body = ilk_yanit.text().await.map_err(|e| GSBError::AgHatasi {
-            mesaj: e.to_string(),
-            kullanici_mesaji: "Cikis yaniti okunamadi. Lutfen tekrar deneyin.".into(),
-        })?;
+        let body = sinirli_govde(ilk_yanit, PORTAL_BODY_LIMIT).await?;
         return Ok(status.is_success() && cikis_yaniti_basarili_mi(&body, &final_url));
     }
 
@@ -289,10 +322,7 @@ pub async fn cikis_yap(clients: &PortalClients) -> Result<bool, GSBError> {
 
     let status = son_yanit.status();
     let final_url = son_yanit.url().to_string();
-    let body = son_yanit.text().await.map_err(|e| GSBError::AgHatasi {
-        mesaj: e.to_string(),
-        kullanici_mesaji: "Cikis yaniti okunamadi. Lutfen tekrar deneyin.".into(),
-    })?;
+    let body = sinirli_govde(son_yanit, PORTAL_BODY_LIMIT).await?;
 
     Ok(status.is_success() && cikis_yaniti_basarili_mi(&body, &final_url))
 }
@@ -335,12 +365,17 @@ fn cikis_yaniti_basarili_mi(body: &str, final_url: &str) -> bool {
 }
 
 fn partial_response_cikis_hedefi_mi(body: &str) -> bool {
+    static REDIRECT_SEL: OnceLock<Option<Selector>> = OnceLock::new();
+
     let document = Html::parse_fragment(body);
-    let Ok(selector) = Selector::parse("partial-response redirect[url]") else {
+    let Some(selector) = REDIRECT_SEL
+        .get_or_init(|| Selector::parse("partial-response redirect[url]").ok())
+        .as_ref()
+    else {
         return false;
     };
 
-    document.select(&selector).any(|redirect| {
+    document.select(selector).any(|redirect| {
         redirect
             .value()
             .attr("url")
@@ -445,9 +480,15 @@ mod tests {
     #[test]
     fn ncsi_yaniti_dogru_degerlendirilir() {
         assert!(ncsi_yaniti_saglam_mi(200, "Microsoft Connect Test"));
+        assert!(ncsi_yaniti_saglam_mi(200, "Microsoft Connect Test\r\n"));
 
         assert!(!ncsi_yaniti_saglam_mi(200, "<html>login</html>"));
         assert!(!ncsi_yaniti_saglam_mi(302, ""));
+
+        assert!(!ncsi_yaniti_saglam_mi(
+            200,
+            "<html><body>Microsoft Connect Test</body></html>"
+        ));
     }
 
     #[test]
@@ -528,5 +569,57 @@ mod tests {
             "<p>Hata olustu.</p>",
             "https://portal.example/hata.html"
         ));
+    }
+
+    async fn sahte_sunucu(yanit: Vec<u8>) -> String {
+        let dinleyici = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let adres = dinleyici.local_addr().unwrap();
+
+        tokio::spawn(async move {
+            if let Ok((mut soket, _)) = dinleyici.accept().await {
+                use tokio::io::{AsyncReadExt, AsyncWriteExt};
+                let mut tampon = [0u8; 1024];
+                let _ = soket.read(&mut tampon).await;
+                let _ = soket.write_all(&yanit).await;
+                let _ = soket.shutdown().await;
+            }
+        });
+
+        format!("http://{}/", adres)
+    }
+
+    fn duz_yanit(govde: &str) -> Vec<u8> {
+        format!(
+            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            govde.len(),
+            govde
+        )
+        .into_bytes()
+    }
+
+    #[tokio::test]
+    async fn govde_siniri_asilinca_hata_doner() {
+        let buyuk = "x".repeat(4096);
+        let url = sahte_sunucu(duz_yanit(&buyuk)).await;
+        let client = Client::builder().build().unwrap();
+        let yanit = client.get(&url).send().await.unwrap();
+
+        let sonuc = sinirli_govde(yanit, 1024).await;
+
+        match sonuc {
+            Err(GSBError::AgHatasi { mesaj, .. }) => assert!(mesaj.contains("1024")),
+            other => panic!("sinir asimi hatasi bekleniyordu, gelen: {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    async fn sinir_altindaki_govde_okunur() {
+        let url = sahte_sunucu(duz_yanit("<html>merhaba</html>")).await;
+        let client = Client::builder().build().unwrap();
+        let yanit = client.get(&url).send().await.unwrap();
+
+        let govde = sinirli_govde(yanit, 1024).await.unwrap();
+
+        assert_eq!(govde, "<html>merhaba</html>");
     }
 }

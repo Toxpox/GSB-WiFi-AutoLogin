@@ -1,6 +1,24 @@
 use scraper::{ElementRef, Html, Selector};
 use serde::Serialize;
 use std::collections::HashMap;
+use std::sync::LazyLock;
+
+macro_rules! secici {
+    ($ad:ident, $desen:literal) => {
+        static $ad: LazyLock<Selector> = LazyLock::new(|| Selector::parse($desen).unwrap());
+    };
+}
+
+secici!(BLOK_SEL, "#content-div > center");
+secici!(SPAN_MYINFO_SEL, "span.myinfo");
+secici!(LABEL_MYINFO_SEL, "label.myinfo");
+secici!(LABEL_SEL, "label");
+secici!(TD_SEL, "td");
+secici!(KOTA_TR_SEL, "#mainPanel\\:kotaDisplay tr");
+secici!(CIHAZ_HUCRE_SEL, "#j_idt20_data tr td[role=gridcell]");
+secici!(CIHAZ_FORM_SEL, "#j_idt20_data tr form");
+secici!(SUBMIT_SEL, "button[type=submit]");
+secici!(VIEWSTATE_SEL, "input[name='javax.faces.ViewState']");
 
 #[derive(Debug, Serialize, Clone, Default)]
 pub struct KullaniciBilgi {
@@ -51,8 +69,7 @@ pub fn bilgi_cek(html: &str) -> KullaniciBilgi {
         ..Default::default()
     };
 
-    let sel = Selector::parse("#content-div > center").unwrap();
-    if let Some(blok) = document.select(&sel).next() {
+    if let Some(blok) = document.select(&BLOK_SEL).next() {
         kimlik_alanlarini_doldur(&mut bilgi, &blok);
     }
 
@@ -62,8 +79,7 @@ pub fn bilgi_cek(html: &str) -> KullaniciBilgi {
 }
 
 fn kimlik_alanlarini_doldur(bilgi: &mut KullaniciBilgi, blok: &ElementRef<'_>) {
-    let span_sel = Selector::parse("span.myinfo").unwrap();
-    if let Some(span) = blok.select(&span_sel).next() {
+    if let Some(span) = blok.select(&SPAN_MYINFO_SEL).next() {
         let txt: String = span
             .text()
             .collect::<String>()
@@ -76,8 +92,7 @@ fn kimlik_alanlarini_doldur(bilgi: &mut KullaniciBilgi, blok: &ElementRef<'_>) {
         }
     }
 
-    let label_sel = Selector::parse("label.myinfo").unwrap();
-    for lbl in blok.select(&label_sel) {
+    for lbl in blok.select(&LABEL_MYINFO_SEL) {
         let txt: String = lbl
             .text()
             .collect::<String>()
@@ -92,8 +107,7 @@ fn kimlik_alanlarini_doldur(bilgi: &mut KullaniciBilgi, blok: &ElementRef<'_>) {
     }
 
     if bilgi.konum.is_empty() || bilgi.son_giris.is_empty() {
-        let all_label_sel = Selector::parse("label").unwrap();
-        for lbl in blok.select(&all_label_sel) {
+        for lbl in blok.select(&LABEL_SEL) {
             let classes = lbl.value().attr("class").unwrap_or("");
             if classes.contains("myinfo") {
                 continue;
@@ -218,26 +232,11 @@ fn alan_ayikla(bilgi: &mut KullaniciBilgi, txt: &str) {
 fn kota_cek(document: &Html) -> HashMap<String, String> {
     let mut kota = HashMap::new();
 
-    let td_sel = match Selector::parse("td") {
-        Ok(s) => s,
-        Err(_) => return kota,
-    };
-
-    let label_sel = match Selector::parse("label") {
-        Ok(s) => s,
-        Err(_) => return kota,
-    };
-
-    let tr_sel = match Selector::parse("#mainPanel\\:kotaDisplay tr") {
-        Ok(s) => s,
-        Err(_) => return kota,
-    };
-
-    for tr in document.select(&tr_sel) {
-        let tds: Vec<_> = tr.select(&td_sel).collect();
+    for tr in document.select(&KOTA_TR_SEL) {
+        let tds: Vec<_> = tr.select(&TD_SEL).collect();
         if tds.len() >= 2 {
-            let key_label = tds[0].select(&label_sel).next();
-            let val_label = tds[1].select(&label_sel).next();
+            let key_label = tds[0].select(&LABEL_SEL).next();
+            let val_label = tds[1].select(&LABEL_SEL).next();
 
             if let (Some(kl), Some(vl)) = (key_label, val_label) {
                 let key = kl.text().collect::<String>().trim().to_string();
@@ -260,8 +259,7 @@ pub fn maksimum_bilgi_cek(html: &str) -> crate::errors::CihazBilgisi {
     let document = Html::parse_document(html);
     let mut bilgi = crate::errors::CihazBilgisi::default();
 
-    let sel = Selector::parse("#j_idt20_data tr td[role=gridcell]").unwrap();
-    let hucreler: Vec<_> = document.select(&sel).collect();
+    let hucreler: Vec<_> = document.select(&CIHAZ_HUCRE_SEL).collect();
 
     if hucreler.len() >= 3 {
         bilgi.baslangic = hucreler[0].text().collect::<String>().trim().to_string();
@@ -274,15 +272,13 @@ pub fn maksimum_bilgi_cek(html: &str) -> crate::errors::CihazBilgisi {
 pub fn maksimum_form_bilgi_cek(html: &str) -> FormBilgi {
     let document = Html::parse_document(html);
 
-    let form_sel = Selector::parse("#j_idt20_data tr form").unwrap();
-    let Some(form) = document.select(&form_sel).next() else {
+    let Some(form) = document.select(&CIHAZ_FORM_SEL).next() else {
         return FormBilgi::default();
     };
 
     let mut bilgi = form_temel_bilgi_cek(&form);
 
-    let btn_sel = Selector::parse("button[type=submit]").unwrap();
-    if let Some(btn) = form.select(&btn_sel).next() {
+    if let Some(btn) = form.select(&SUBMIT_SEL).next() {
         bilgi.buton_id = buton_kimligi(&btn);
     }
     bilgi
@@ -300,8 +296,7 @@ fn form_temel_bilgi_cek(form: &ElementRef<'_>) -> FormBilgi {
         ..Default::default()
     };
 
-    let vs_sel = Selector::parse("input[name='javax.faces.ViewState']").unwrap();
-    if let Some(vs) = form.select(&vs_sel).next() {
+    if let Some(vs) = form.select(&VIEWSTATE_SEL).next() {
         bilgi.viewstate = vs.value().attr("value").unwrap_or("").to_string();
     }
 
