@@ -95,21 +95,23 @@ async function agDurumunuKontrolEt() {
 }
 
 async function baslatmaYukle() {
-    try {
-        const appBilgisi = await invoke('app_bilgisi');
-        VERSION = appBilgisi.version || VERSION;
-        GIRIS_URL = appBilgisi.giris_url || GIRIS_URL;
-    } catch (_) {}
+    const [appSonuc, ayarSonuc] = await Promise.all([
+        invoke('app_bilgisi').catch(function () { return null; }),
+        invoke('ayarlari_al').catch(function () { return null; }),
+        profilleriYukle({ sessiz: true }),
+    ]);
 
-    await profilleriYukle({ sessiz: true });
+    if (appSonuc) {
+        VERSION = appSonuc.version || VERSION;
+        GIRIS_URL = appSonuc.giris_url || GIRIS_URL;
+    }
 
     logYaz("GSB WiFi AutoLogin v" + VERSION, "bilgi");
     logYaz("Hazır.", "soluk");
 
     var gsbAginda = await agDurumunuKontrolEt();
 
-    var ayarlar = null;
-    try { ayarlar = await invoke('ayarlari_al'); } catch (_) {}
+    var ayarlar = ayarSonuc;
     if (ayarlar && ayarlar.otomatik_giris) {
         var kullanici = document.getElementById('kullanici').value;
         var sifre = document.getElementById('sifre').value;

@@ -18,6 +18,7 @@ pub const TIMEOUT_SECS: u64 = 15;
 pub const CONNECT_TIMEOUT_SECS: u64 = 4;
 pub const READ_TIMEOUT_SECS: u64 = 8;
 pub const DNS_TIMEOUT_SECS: u64 = 3;
+pub const TCP_TIMEOUT_SECS: u64 = 3;
 pub const PORTAL_BODY_LIMIT: usize = 256 * 1024;
 pub const NCSI_BODY_LIMIT: usize = 1024;
 
@@ -328,8 +329,10 @@ pub fn profil_yukle(id: &str) -> Result<(String, String), GSBError> {
             "Profil bilgileri bu cihazda cozulemedi. Profili silip yeniden kaydedin.",
         ));
     };
-    depo.aktif_id = Some(profil.id);
-    profil_deposu_yaz(&depo)?;
+    if depo.aktif_id.as_deref() != Some(profil.id.as_str()) {
+        depo.aktif_id = Some(profil.id);
+        profil_deposu_yaz(&depo)?;
+    }
     Ok(kullanici)
 }
 

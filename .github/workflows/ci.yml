@@ -47,11 +47,13 @@ jobs:
       - name: Frontend syntax check
         shell: pwsh
         run: |
-          node --check frontend/js/app.js
-          node --check frontend/js/giris.js
-          node --check frontend/js/log.js
-          node --check frontend/js/hosgeldin.js
-          node --check frontend/js/tani.js
+          $ErrorActionPreference = "Stop"
+          $dosyalar = Get-ChildItem -Path frontend/js -Filter *.js -File
+          if ($dosyalar.Count -eq 0) { throw "frontend/js altinda JS dosyasi bulunamadi" }
+          foreach ($dosya in $dosyalar) {
+            node --check $dosya.FullName
+            if ($LASTEXITCODE -ne 0) { throw "Sozdizimi hatasi: $($dosya.Name)" }
+          }
 
       - name: Version consistency
         shell: pwsh

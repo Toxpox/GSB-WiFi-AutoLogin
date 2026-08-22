@@ -218,25 +218,43 @@ fn ncsi_yaniti_saglam_mi(status: u16, body: &str) -> bool {
 }
 
 pub async fn gsb_aginda_mi() -> bool {
-    let Ok(adresler) = tokio::net::lookup_host((PORTAL_HOST, 443)).await else {
+    let cozumleme = tokio::time::timeout(
+        Duration::from_secs(DNS_TIMEOUT_SECS),
+        tokio::net::lookup_host((PORTAL_HOST, 443)),
+    )
+    .await;
+    let Ok(Ok(adresler)) = cozumleme else {
         return false;
     };
     let adresler: Vec<_> = adresler.collect();
     if adresler.iter().any(|addr| ozel_ip_mi(&addr.ip())) {
         return true;
     }
-    for addr in adresler {
-        let deneme =
-            tokio::time::timeout(Duration::from_secs(3), tokio::net::TcpStream::connect(addr))
-                .await;
-        if matches!(deneme, Ok(Ok(_))) {
+
+    let (v6, v4): (Vec<_>, Vec<_>) = adresler.into_iter().partition(|adr| adr.is_ipv6());
+    let yaris = async {
+        tokio::select! {
+            basarili = sirayla_baglan(v4) => basarili,
+            basarili = sirayla_baglan(v6) => basarili,
+        }
+    };
+
+    matches!(
+        tokio::time::timeout(Duration::from_secs(TCP_TIMEOUT_SECS), yaris).await,
+        Ok(true)
+    )
+}
+
+async fn sirayla_baglan(adresler: Vec<std::net::SocketAddr>) -> bool {
+    for adr in adresler {
+        if tokio::net::TcpStream::connect(adr).await.is_ok() {
             return true;
         }
     }
-    false
+    std::future::pending().await
 }
 
-fn ozel_ip_mi(ip: &std::net::IpAddr) -> bool {
+pub fn ozel_ip_mi(ip: &std::net::IpAddr) -> bool {
     match ip {
         std::net::IpAddr::V4(v4) => v4.is_private(),
         std::net::IpAddr::V6(_) => false,

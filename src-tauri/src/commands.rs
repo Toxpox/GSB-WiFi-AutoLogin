@@ -552,7 +552,26 @@ async fn tcp_testi(ip: &str, port: u16) -> bool {
 pub async fn tani_calistir(state: State<'_, AppState>) -> Result<Vec<TaniSonuc>, String> {
     let mut sonuclar = Vec::new();
 
-    let gsb = network::gsb_aginda_mi().await;
+    let clients = state.client.lock().await.clone();
+    let (ip, net, portal) = tokio::join!(
+        network::ip_bul(config::GIRIS_URL),
+        network::internet_var_mi(),
+        network::portal_erisim_testi(&clients)
+    );
+
+    let gsb = match &ip {
+        Ok(adr) => adr
+            .parse::<std::net::IpAddr>()
+            .map(|adres| network::ozel_ip_mi(&adres))
+            .unwrap_or(false),
+        Err(_) => false,
+    };
+    let tcp = match &ip {
+        Ok(adr) => tcp_testi(adr, 443).await,
+        Err(_) => false,
+    };
+    let gsb = gsb || tcp;
+
     sonuclar.push(tani(
         "GSB ağı",
         if gsb { "ok" } else { "hata" },
@@ -563,7 +582,6 @@ pub async fn tani_calistir(state: State<'_, AppState>) -> Result<Vec<TaniSonuc>,
         },
     ));
 
-    let ip = network::ip_bul(config::GIRIS_URL).await;
     match &ip {
         Ok(adr) => sonuclar.push(tani(
             "DNS çözümleme",
@@ -581,11 +599,10 @@ pub async fn tani_calistir(state: State<'_, AppState>) -> Result<Vec<TaniSonuc>,
     }
 
     if let Ok(adr) = &ip {
-        let baglandi = tcp_testi(adr, 443).await;
         sonuclar.push(tani(
             "TCP bağlantısı (:443)",
-            if baglandi { "ok" } else { "hata" },
-            if baglandi {
+            if tcp { "ok" } else { "hata" },
+            if tcp {
                 format!("{}:443 erişilebilir.", adr)
             } else {
                 format!("{}:443 bağlantı kurulamadı.", adr)
@@ -593,7 +610,6 @@ pub async fn tani_calistir(state: State<'_, AppState>) -> Result<Vec<TaniSonuc>,
         ));
     }
 
-    let net = network::internet_var_mi().await;
     sonuclar.push(tani(
         "İnternet / oturum",
         if net { "ok" } else { "uyari" },
@@ -604,8 +620,7 @@ pub async fn tani_calistir(state: State<'_, AppState>) -> Result<Vec<TaniSonuc>,
         },
     ));
 
-    let clients = state.client.lock().await.clone();
-    match network::portal_erisim_testi(&clients).await {
+    match portal {
         Ok(kod) => sonuclar.push(tani(
             "Portal erişimi",
             if (200..400).contains(&kod) {
