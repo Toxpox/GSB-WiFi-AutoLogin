@@ -482,8 +482,11 @@ fn url_yolu_cikis_sonucu_mu(url: &url::Url) -> bool {
     )
 }
 
-pub async fn onceki_oturumu_kapat(client: &Client, html: &str, login_url: &str) -> bool {
-    let form = parser::maksimum_form_bilgi_cek(html);
+pub async fn onceki_oturumu_kapat(
+    client: &Client,
+    form: &parser::FormBilgi,
+    login_url: &str,
+) -> bool {
     if form.form_id.is_empty() || form.buton_id.is_empty() {
         return false;
     }
@@ -517,6 +520,17 @@ pub async fn onceki_oturumu_kapat(client: &Client, html: &str, login_url: &str) 
         .await
         .map(|r| r.status().is_success())
         .unwrap_or(false)
+}
+
+pub async fn oturum_dusmesini_bekle(client: &Client) {
+    let biten_sure = tokio::time::Instant::now() + Duration::from_secs(OTURUM_DUSME_BUTCE_SECS);
+
+    while tokio::time::Instant::now() < biten_sure {
+        if oturum_bilgisi_getir(client).await.is_err() {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(OTURUM_YOKLAMA_ARALIK_MS)).await;
+    }
 }
 
 #[cfg(test)]

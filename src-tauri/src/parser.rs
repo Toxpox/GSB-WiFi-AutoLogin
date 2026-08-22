@@ -256,32 +256,35 @@ fn kota_cek(document: &Html) -> HashMap<String, String> {
 }
 
 pub fn maksimum_bilgi_cek(html: &str) -> crate::errors::CihazBilgisi {
-    let document = Html::parse_document(html);
-    let mut bilgi = crate::errors::CihazBilgisi::default();
-
-    let hucreler: Vec<_> = document.select(&CIHAZ_HUCRE_SEL).collect();
-
-    if hucreler.len() >= 3 {
-        bilgi.baslangic = hucreler[0].text().collect::<String>().trim().to_string();
-        bilgi.mac = hucreler[1].text().collect::<String>().trim().to_string();
-        bilgi.konum = hucreler[2].text().collect::<String>().trim().to_string();
-    }
-    bilgi
+    maksimum_sayfa_cek(html).cihaz
 }
 
-pub fn maksimum_form_bilgi_cek(html: &str) -> FormBilgi {
+#[derive(Debug, Clone, Default)]
+pub struct MaksimumSayfaBilgi {
+    pub cihaz: crate::errors::CihazBilgisi,
+    pub form: FormBilgi,
+}
+
+pub fn maksimum_sayfa_cek(html: &str) -> MaksimumSayfaBilgi {
     let document = Html::parse_document(html);
+    let mut sayfa = MaksimumSayfaBilgi::default();
+
+    let hucreler: Vec<_> = document.select(&CIHAZ_HUCRE_SEL).collect();
+    if hucreler.len() >= 3 {
+        sayfa.cihaz.baslangic = hucreler[0].text().collect::<String>().trim().to_string();
+        sayfa.cihaz.mac = hucreler[1].text().collect::<String>().trim().to_string();
+        sayfa.cihaz.konum = hucreler[2].text().collect::<String>().trim().to_string();
+    }
 
     let Some(form) = document.select(&CIHAZ_FORM_SEL).next() else {
-        return FormBilgi::default();
+        return sayfa;
     };
 
-    let mut bilgi = form_temel_bilgi_cek(&form);
-
+    sayfa.form = form_temel_bilgi_cek(&form);
     if let Some(btn) = form.select(&SUBMIT_SEL).next() {
-        bilgi.buton_id = buton_kimligi(&btn);
+        sayfa.form.buton_id = buton_kimligi(&btn);
     }
-    bilgi
+    sayfa
 }
 
 fn form_temel_bilgi_cek(form: &ElementRef<'_>) -> FormBilgi {
@@ -381,8 +384,7 @@ mod tests {
             </table>
         "#;
 
-        let cihaz = maksimum_bilgi_cek(html);
-        let form = maksimum_form_bilgi_cek(html);
+        let MaksimumSayfaBilgi { cihaz, form } = maksimum_sayfa_cek(html);
 
         assert_eq!(cihaz.baslangic, "2026-04-24 04:59");
         assert_eq!(cihaz.mac, "AA:BB:CC:DD:EE:FF");

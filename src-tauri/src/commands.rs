@@ -6,12 +6,14 @@ use std::process::Command;
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, State};
-use tokio::sync::{Mutex, Notify};
+use tokio::sync::{Mutex, Notify, Semaphore};
 
 pub struct AppState {
     pub client: Mutex<network::PortalClients>,
-    pub giris_aktif: Mutex<bool>,
-    pub son_html: Mutex<String>,
+
+    pub giris_izni: Arc<Semaphore>,
+
+    pub son_maksimum_form: Mutex<Option<parser::FormBilgi>>,
 
     pub son_kimlik: Mutex<Option<(String, String)>>,
 
@@ -24,8 +26,8 @@ impl AppState {
     pub fn new() -> Result<Self, GSBError> {
         Ok(Self {
             client: Mutex::new(network::client_olustur()?),
-            giris_aktif: Mutex::new(false),
-            son_html: Mutex::new(String::new()),
+            giris_izni: Arc::new(Semaphore::new(1)),
+            son_maksimum_form: Mutex::new(None),
             son_kimlik: Mutex::new(None),
             bekleyen_guncelleme: Mutex::new(None),
             ag_olay: Arc::new(Notify::new()),
@@ -107,13 +109,11 @@ pub async fn giris(
     state: State<'_, AppState>,
 ) -> Result<GirisSonuc, String> {
     portal_url_dogrula(&url).map_err(|e: GSBError| -> String { e.into() })?;
-    {
-        let mut aktif = state.giris_aktif.lock().await;
-        if *aktif {
-            return Err("Giris zaten devam ediyor".into());
-        }
-        *aktif = true;
-    }
+    let _izin = state
+        .giris_izni
+        .clone()
+        .try_acquire_owned()
+        .map_err(|_| "Giris zaten devam ediyor".to_string())?;
 
     let sonuc = async {
         {
@@ -125,7 +125,6 @@ pub async fn giris(
         match network::giris_yap(&client, &url, &kullanici, &sifre).await {
             Ok(yanit) => {
                 let network::GirisYaniti { html, ip } = yanit;
-                *state.son_html.lock().await = html.clone();
                 *state.son_kimlik.lock().await = Some((kullanici.clone(), sifre.clone()));
                 let bilgi = parser::bilgi_cek(&html);
                 let kayit = config::kullanici_kaydet(&kullanici, &sifre);
@@ -135,7 +134,8 @@ pub async fn giris(
                 cihaz_bilgisi,
                 html,
             }) => {
-                *state.son_html.lock().await = html;
+                *state.son_maksimum_form.lock().await =
+                    Some(parser::maksimum_sayfa_cek(&html).form);
                 Err(GSBError::MaksimumCihaz {
                     cihaz_bilgisi,
                     html: String::new(),
@@ -146,7 +146,6 @@ pub async fn giris(
     }
     .await;
 
-    *state.giris_aktif.lock().await = false;
     if let Ok(s) = &sonuc {
         tepsi_ipucu_guncelle(&app, "Bağlı");
         kota_bildirimi_isle(&app, &s.bilgi);
@@ -162,7 +161,7 @@ pub async fn cikis(app: AppHandle, state: State<'_, AppState>) -> Result<bool, S
         .await
         .map_err(|e: GSBError| -> String { e.into() })?;
     if basarili {
-        *state.son_html.lock().await = String::new();
+        *state.son_maksimum_form.lock().await = None;
         *state.son_kimlik.lock().await = None;
         tepsi_ipucu_guncelle(&app, "Bağlı değil");
     }
@@ -178,7 +177,6 @@ pub async fn bilgi_yenile(
     let html = network::oturum_bilgisi_getir(&client)
         .await
         .map_err(|e: GSBError| e.to_string())?;
-    *state.son_html.lock().await = html.clone();
     let bilgi = parser::bilgi_cek(&html);
     tepsi_ipucu_guncelle(&app, "Bağlı");
     kota_bildirimi_isle(&app, &bilgi);
@@ -435,20 +433,35 @@ pub async fn maksimum_cihaz_isle(
     state: State<'_, AppState>,
 ) -> Result<GirisSonuc, String> {
     portal_url_dogrula(&url).map_err(|e: GSBError| -> String { e.into() })?;
-    {
-        let mut aktif = state.giris_aktif.lock().await;
-        if *aktif {
-            return Err("Giris zaten devam ediyor".into());
-        }
-        *aktif = true;
-    }
+    let _izin = state
+        .giris_izni
+        .clone()
+        .try_acquire_owned()
+        .map_err(|_| "Giris zaten devam ediyor".to_string())?;
 
     let sonuc = async {
-        let html = state.son_html.lock().await.clone();
+        let form = state.son_maksimum_form.lock().await.clone();
+        let Some(form) = form else {
+            return Err(GSBError::GirisBasarisiz {
+                mesaj: "Maksimum cihaz formu yok".into(),
+                kullanici_mesaji: "Onceki oturum bilgisi bulunamadi. Lutfen yeniden giris deneyin."
+                    .into(),
+            }
+            .into());
+        };
         let mevcut_client = state.client.lock().await.normal.clone();
 
-        network::onceki_oturumu_kapat(&mevcut_client, &html, &url).await;
-        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        let kapatildi = network::onceki_oturumu_kapat(&mevcut_client, &form, &url).await;
+        if !kapatildi {
+            return Err(GSBError::GirisBasarisiz {
+                mesaj: "Onceki oturum kapatilamadi".into(),
+                kullanici_mesaji:
+                    "Onceki cihazin oturumu kapatilamadi. Lutfen manuel tekrar deneyin.".into(),
+            }
+            .into());
+        }
+
+        network::oturum_dusmesini_bekle(&mevcut_client).await;
 
         {
             let mut client = state.client.lock().await;
@@ -471,7 +484,6 @@ pub async fn maksimum_cihaz_isle(
             Err(e) => return Err(e.into()),
         };
 
-        *state.son_html.lock().await = yeni_html.clone();
         *state.son_kimlik.lock().await = Some((kullanici.clone(), sifre.clone()));
         let bilgi = parser::bilgi_cek(&yeni_html);
         let kayit = config::kullanici_kaydet(&kullanici, &sifre);
@@ -479,7 +491,6 @@ pub async fn maksimum_cihaz_isle(
     }
     .await;
 
-    *state.giris_aktif.lock().await = false;
     if let Ok(s) = &sonuc {
         tepsi_ipucu_guncelle(&app, "Bağlı");
         kota_bildirimi_isle(&app, &s.bilgi);
@@ -827,13 +838,9 @@ async fn yeniden_baglanmayi_dene(app: &AppHandle, sessiz_aktif: bool) {
         return;
     }
 
-    {
-        let mut aktif = state.giris_aktif.lock().await;
-        if *aktif {
-            return;
-        }
-        *aktif = true;
-    }
+    let Ok(_izin) = state.giris_izni.clone().try_acquire_owned() else {
+        return;
+    };
 
     yeniden_baglanma_bildir(
         app,
@@ -854,7 +861,6 @@ async fn yeniden_baglanmayi_dene(app: &AppHandle, sessiz_aktif: bool) {
     match sonuc {
         Ok(network::GirisYaniti { html, .. }) => {
             let bilgi = parser::bilgi_cek(&html);
-            *state.son_html.lock().await = html;
             tepsi_ipucu_guncelle(app, "Bağlı");
             yeniden_baglanma_bildir(
                 app,
@@ -880,8 +886,6 @@ async fn yeniden_baglanmayi_dene(app: &AppHandle, sessiz_aktif: bool) {
             );
         }
     }
-
-    *state.giris_aktif.lock().await = false;
 }
 
 #[cfg(test)]
