@@ -74,8 +74,8 @@ Her sürümde yayınlanan `SHA256SUMS.txt` ile indirdiğiniz dosyanın bütünl�
 > (diğer platformlarda periyodik kontrol devrede kalır) ve Windows bildirimleri.
 > Giriş, kota takibi ve otomatik yeniden bağlanma üç platformda da çalışır.
 >
-> 🍎 **macOS paketleri imzalı/noter onaylı değildir.** İlk açılışta Gatekeeper
-> uyarı verir; uygulamaya sağ tıklayıp "Aç" demeniz gerekir.
+> 🍎 **macOS paketleri imzalı değildir.** İlk açılışta sistem uyarı verir;
+> uygulamaya sağ tıklayıp "Aç" demeniz gerekir.
 
 Uygulama açılışta yeni sürümü arka planda kontrol eder. Güncelleme varsa pencerenin üstünde yeşil bir bar belirir: installer (NSIS) kurulumunda tek tıkla imzalı güncelleme indirilir, kurulur ve uygulama yeniden başlar; portable sürümde bar GitHub release sayfasını açar.
 
