@@ -290,8 +290,8 @@ jobs:
             echo
             echo "Dosya butunlugunu \`SHA256SUMS.txt\` ile dogrulayabilirsiniz."
             echo
-            echo "> macOS paketleri henuz noter onayli degildir; ilk acilista"
-            echo "> Gatekeeper uyarisi gorebilirsiniz."
+            echo "> macOS paketleri imzali degildir; ilk acilista sistem uyarisi"
+            echo "> gorebilirsiniz. Uygulamaya sag tiklayip \"Ac\" demeniz gerekir."
           } > surum-notu.md
           cat surum-notu.md
 
