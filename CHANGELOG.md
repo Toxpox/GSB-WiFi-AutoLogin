@@ -5,6 +5,11 @@ Bu projedeki dikkate değer değişiklikler bu dosyada belgelenir.
 Biçim [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) standardını,
 sürümleme [Semantic Versioning](https://semver.org/lang/tr/) kurallarını takip eder.
 
+## [1.10.0] - 2026-08-22
+
+### Değişti
+- **Ağ istemcisi GSB portalına göre optimize edildi:** Merkezi portal (F5 BigIP + PrimeFaces/JSF) yalnızca HTTP/1.1 konuştuğu için istemci `http1_only` ile sabitlendi (gereksiz HTTP/2 ALPN denemesi kaldırıldı). Ardışık istekler (giriş → oturum doğrulama → kota) aynı TCP bağlantısını yeniden kullanacak şekilde bağlantı havuzu (`pool_idle_timeout`, `tcp_keepalive`) ve `tcp_nodelay` ayarlandı. Bu ayarlar merkezi portala dayalı olduğu için tüm GSB lokasyonlarında geçerlidir; MTU/gecikme gibi konuma özgü değerlere dokunulmadı.
+
 ## [1.9.1] - 2026-06-15
 
 ### Düzeltmeler

@@ -10,7 +10,7 @@ document.addEventListener('fullscreenchange', function() {
     }
 });
 
-let VERSION = "1.9.1";
+let VERSION = "1.10.0";
 let GIRIS_URL = "https://wifi.gsb.gov.tr/j_spring_security_check";
 let KAYITLI_PROFILLER = [];
 let SECILI_PROFIL_ID = null;
