@@ -42,6 +42,8 @@ daha hızlı, daha öngörülebilir ve daha güvenli hâle geldi. Test sayısı 
 - **Çıkış/oturum doğrulaması:** Yönlendirme hedefi son yol bileşeninden (`;jsessionid` destekli) ve JSF partial-response gövdesindeki gerçek `<redirect url="...">` değerinden okunuyor.
 - **Önceki oturumu düşürme sonucu kontrol ediliyor:** Sessizce başarısız olabilen istek artık doğrulanıyor.
 - **Giriş öncesi gereksiz DNS çağrısı kritik yoldan çıkarıldı:** IP bilgisi kurulan bağlantının kendisinden alınıyor.
+- **Pencereye sığmayan arayüz:** Sabit 420×680 pencere, Windows'tan büyük font metriklerine sahip ortamlarda (ör. Linux) içeriği taşırıyor ve alt buton çubuğunu (`Çıkış Yap` / `Bağlan`) kesiyordu. Pencere 440×760'a büyütüldü ve sınırlı biçimde yeniden boyutlandırılabilir yapıldı (min 420×620, max 640×1100; maximize/fullscreen hâlâ kapalı). Ayrıca ekran içeriği kaydırılabilir bir gövdeye alındı: marka satırı ve alt çubuk her zaman görünür kalıyor, arada kalan içerik sığmazsa kaydırılıyor. Böylece taşma font, tema veya ölçek farkından bağımsız olarak yapısal olarak engellendi.
+- **Giriş ekranındaki yanlış güvenlik etiketi:** Altbilgideki "SSL kapalı · captive portal" yazısı, TLS doğrulaması bu sürümde açıldığı için artık doğru değildi; "TLS doğrulamalı · captive portal" olarak güncellendi ve uyarı noktası sarıdan yeşile çevrildi.
 
 ### Bakım
 - `cargo test` artık gerçek kullanıcı veri dizinine yazmıyor; test derlemesinde veri dizini geçici dizine yönleniyor (derleme zamanı garantisi) ve iki koruma testiyle korunuyor.
