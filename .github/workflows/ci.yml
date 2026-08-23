@@ -171,12 +171,13 @@ jobs:
 
       - name: Derle ve paketle
         working-directory: src-tauri
+        # shell: bash sart: Windows'ta varsayilan kabuk PowerShell ve satir
+        # devami olarak kullanilan `\` arguman sanilip `--bundles` bozuluyor.
+        shell: bash
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: |
-          cargo tauri build --bundles ${{ matrix.hedefler }} \
-            ${{ matrix.rust_hedef && format('--target {0}', matrix.rust_hedef) || '' }}
+        run: cargo tauri build --bundles ${{ matrix.hedefler }} ${{ matrix.rust_hedef && format('--target {0}', matrix.rust_hedef) || '' }}
 
       - name: Artefaktlari topla
         shell: bash

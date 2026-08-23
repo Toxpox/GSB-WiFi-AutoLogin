@@ -10,7 +10,7 @@
   <a href="https://github.com/Toxpox/GSB-WiFi-AutoLogin/blob/main/LICENSE" target="_blank">
     <img alt="License: GPLv3" src="https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge" />
   </a>
-  <img alt="Platform" src="https://img.shields.io/badge/Platform-Windows-blue.svg?style=for-the-badge" />
+  <img alt="Platform" src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-blue.svg?style=for-the-badge" />
   <img alt="Rust" src="https://img.shields.io/badge/Rust-Tauri%20v2-orange.svg?style=for-the-badge&logo=rust" />
 </p>
 
@@ -55,9 +55,35 @@
 
 En güncel sürümü **[Releases](https://github.com/Toxpox/GSB-WiFi-AutoLogin/releases)** sayfasından indirebilirsiniz.
 
+v1.10.0 ile birlikte Windows, Linux ve macOS için paket yayınlanıyor. İşletim sisteminize uygun dosyayı seçin:
+
+| İşletim sistemi | İndirilecek dosya | Notlar |
+|:---|:---|:---|
+| 🪟 **Windows** | `..._setup.exe` (kurulum) veya `..._portable.exe` | En kapsamlı desteklenen platform. |
+| 🐧 **Linux (Debian/Ubuntu)** | `..._amd64.deb` | `sudo apt install ./dosya.deb` |
+| 🐧 **Linux (Fedora/RHEL)** | `..._x86_64.rpm` | `sudo dnf install ./dosya.rpm` |
+| 🐧 **Linux (diğer)** | `..._amd64.AppImage` | Çalıştırma izni verip doğrudan çalıştırın. |
+| 🍎 **macOS (Apple Silicon)** | `..._aarch64.dmg` | M1 ve sonrası. |
+| 🍎 **macOS (Intel)** | `..._x86_64.dmg` | 2020 öncesi Intel işlemciler. |
+
+Her sürümde yayınlanan `SHA256SUMS.txt` ile indirdiğiniz dosyanın bütünlüğünü doğrulayabilirsiniz.
+
+> ⚠️ **Platform farkları:** Uygulama Windows için geliştirildi ve bazı özellikler
+> yalnızca orada çalışır: kimlik bilgilerinin DPAPI ile şifrelenmesi (diğer
+> platformlarda AES-GCM'e düşer), ağ değişikliğinde olay tabanlı yeniden bağlanma
+> (diğer platformlarda periyodik kontrol devrede kalır) ve Windows bildirimleri.
+> Giriş, kota takibi ve otomatik yeniden bağlanma üç platformda da çalışır.
+>
+> 🍎 **macOS paketleri imzalı/noter onaylı değildir.** İlk açılışta Gatekeeper
+> uyarı verir; uygulamaya sağ tıklayıp "Aç" demeniz gerekir.
+
 Uygulama açılışta yeni sürümü arka planda kontrol eder. Güncelleme varsa pencerenin üstünde yeşil bir bar belirir: installer (NSIS) kurulumunda tek tıkla imzalı güncelleme indirilir, kurulur ve uygulama yeniden başlar; portable sürümde bar GitHub release sayfasını açar.
 
 > ℹ️ Otomatik güncelleme v1.8.0 ile geldi: v1.8.0'ı bir kez elle kurmanız gerekir, sonraki sürümler uygulama içinden güncellenir.
+>
+> Uygulama içi güncelleme Windows (installer) ve Linux (AppImage) üzerinde
+> çalışır. `.deb` ve `.rpm` paketleri paket yöneticisiyle güncellenir; macOS'ta
+> yeni `.dmg` indirilip kurulur.
 
 ### 📦 Installer vs 🚀 Portable
 
@@ -158,14 +184,14 @@ node --check frontend/js/hosgeldin.js
 | Teknoloji | Kullanım Alanı |
 |:---:|:---|
 | ![Rust](https://img.shields.io/badge/Rust-000000?style=flat&logo=rust&logoColor=white) | Backend mantığı, ağ akışı, profil yönetimi ve şifreleme |
-| ![Tauri v2](https://img.shields.io/badge/Tauri-FFC131?style=flat&logo=tauri&logoColor=white) | Windows masaüstü uygulama çerçevesi |
+| ![Tauri v2](https://img.shields.io/badge/Tauri-FFC131?style=flat&logo=tauri&logoColor=white) | Çapraz platform masaüstü uygulama çerçevesi (Windows, Linux, macOS) |
 | ![HTML/CSS/JS](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white) | Etkileşimli frontend arayüzü |
 | **AES-GCM** | Yerel kullanıcı bilgisi şifreleme (DPAPI kullanılamadığında) |
 | **reqwest + rustls** | Captive portal, çıkış işlemi ve GitHub Releases API istekleri; TLS doğrulamalı, HTTP/1.1 sabitli, gzip ve bağlantı havuzu açık |
 | **scraper** | Portal sayfalarının semantik sınıflandırılması ve alan ayıklama |
 | **GitHub Releases API** | Yeni sürüm kontrolü ve otomatik güncelleme dağıtımı |
 | **tauri-plugin-updater** | İmzalı uygulama içi otomatik güncelleme |
-| **windows (windows-rs)** | DPAPI ile kimlik şifreleme ve olay tabanlı yeniden bağlanma (IP arayüz değişikliği bildirimi) |
+| **windows (windows-rs)** | Yalnızca Windows: DPAPI ile kimlik şifreleme ve olay tabanlı yeniden bağlanma (IP arayüz değişikliği bildirimi) |
 
 ---
 
