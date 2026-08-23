@@ -5,6 +5,61 @@ Bu projedeki dikkate değer değişiklikler bu dosyada belgelenir.
 Biçim [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) standardını,
 sürümleme [Semantic Versioning](https://semver.org/lang/tr/) kurallarını takip eder.
 
+## [1.10.0] - 2026-08-23
+
+Canlı GSB ağı üzerinde yapılan ölçümlere dayanan kapsamlı ağ, parser ve
+güvenlik optimizasyonu turu. Kullanıcıya bakan davranış aynı kaldı; giriş akışı
+daha hızlı, daha öngörülebilir ve daha güvenli hâle geldi. Test sayısı 27 → 63.
+
+### Güvenlik
+- **TLS doğrulaması açıldı:** Portal istemcisindeki `danger_accept_invalid_certs(true)` kaldırıldı. `wifi.gsb.gov.tr` artık normal sertifika doğrulamasından geçiyor; sertifika zinciri canlı ağda doğrulandı. Kimlik bilgileri artık doğrulanmamış bir TLS oturumu üzerinden gönderilemiyor.
+- **Gövde boyutu sınırlandı:** Tüm yanıt gövdeleri akış sırasında ve decode sonrasında sınırlanıyor (portal 256 KiB, bağlantı kontrolü 1 KiB). Kötü niyetli veya bozuk bir yanıtın belleği doldurması engellendi.
+- **Bağlantı kontrolü sahteciliğe kapatıldı:** Windows NCSI yanıtı artık `contains` yerine tam eşleşme ile doğrulanıyor; captive portalın beklenen metni kendi sayfasına gömerek "internet var" sonucu ürettirmesi mümkün değil.
+
+### Eklendi
+- **Aşama süresi ölçümü:** DNS, TCP bağlantısı, giriş denemesi, toplam giriş, gövde okuma, parse ve yeniden bağlanma süreleri yerel log dosyasına `anahtar=deger` biçiminde yazılıyor. Veri yalnızca cihazda kalır, hiçbir telemetri gönderilmez.
+- **`GSB_VERI_DIZINI` ortam değişkeni:** Ayar, profil ve log dizini elle belirlenebiliyor (taşınabilir kurulum ve tanı için).
+- **Mock HTTP sunucusu üzerinde entegrasyon testleri:** başarılı giriş, giriş formuna geri dönüş, gzip decode, decode sonrası limit aşımı, 503 sonrası yeniden deneme ve gövde sınırı senaryoları.
+- **Linux CI işi:** `ubuntu-latest` üzerinde test + clippy; Windows dışı kolların derlenebilirliği artık CI'da denetleniyor. Masaüstü paketleme için kare PNG/icns/ico ikon seti eklendi.
+
+### Değişti
+- **Ağ istemcisi GSB portalına göre optimize edildi:** Merkezi portal (F5 BigIP + PrimeFaces/JSF) yalnızca HTTP/1.1 konuştuğu için istemci `http1_only` ile sabitlendi (gereksiz HTTP/2 ALPN denemesi kaldırıldı). Ardışık istekler (giriş → oturum doğrulama → kota) aynı TCP bağlantısını yeniden kullanacak şekilde bağlantı havuzu (`pool_idle_timeout`, `tcp_keepalive`) ve `tcp_nodelay` ayarlandı. Bu ayarlar merkezi portala dayalı olduğu için tüm GSB lokasyonlarında geçerlidir; MTU/gecikme gibi konuma özgü değerlere dokunulmadı.
+- **Giriş akışına 25 saniyelik global bütçe:** Denemeler, gövde okuma ve oturum doğrulama isteği kalan bütçeye sarıldı. Kötü durumda ölçülen 33 saniyelik zincir artık bütçeyi aşamıyor. Zamanlama sabitleri arasındaki tutarlılık (`LOGIN_BUTCE_SECS >= TIMEOUT_SECS` vb.) derleme zamanında zorlanıyor.
+- **Zaman aşımları ayrıştırıldı:** Toplam sürenin yanında ayrı `connect_timeout` (4 sn) ve `read_timeout` (8 sn); DNS ve TCP testlerinin kendi bütçeleri var.
+- **gzip sıkıştırma açıldı:** Portal yanıtları sıkıştırılmış aktarılıyor.
+- **Tanılama paralelleştirildi:** DNS bir kez çözülüyor ve sonuç GSB ağı kararı, IP gösterimi ve TCP testi arasında paylaşılıyor; DNS, internet ve portal kontrolleri eşzamanlı çalışıyor. Tanı başına DNS çözümlemesi 3 → 1.
+- **GSB ağı algılamada adres yarışı:** IPv4/IPv6 aileleri Happy Eyeballs benzeri şekilde yarıştırılıyor; adres başına değil tek global TCP bütçesi uygulanıyor.
+- **Açılış hızlandırıldı:** Uygulama bilgisi, ayarlar ve profil yüklemesi paralel çekiliyor (3 seri IPC turu → 1). Aktif profil değişmediyse profil dosyası yeniden yazılmıyor.
+- **Yeniden bağlanmada trailing debounce:** 45 saniyelik leading cooldown yerine 4 saniyelik sessizlik penceresi; ağ olayı fırtınasının son olayı artık bastırılmıyor.
+- **Sayfa sınıflandırma semantikleşti:** Ham `body.contains("content-div")` kontrolleri kaldırıldı; giriş formu, kimlik/kota/çıkış sinyalleri ve gerçek DOM düğümü birlikte değerlendiriliyor. Giriş formuna geri düşme ayrı ve anlaşılır bir hata mesajı üretiyor.
+- **Kırılgan CSS seçicilerine yedek zinciri:** JSF ID'leri değiştiğinde de kota, cihaz listesi ve buton alanları ayıklanabiliyor. Tüm seçiciler bir kez derlenip yeniden kullanılıyor.
+- **Maksimum cihaz akışı sadeleşti:** Cihaz ve form bilgisi tek DOM parse'ından geliyor (2 → 1 parse). Sabit 2 saniyelik bekleme yerine oturum düşer düşmez çıkan yoklama (8 sn bütçe).
+- **Durum yönetimi sadeleşti:** ~20 KB'lik ham HTML state'i kaldırıldı; eşzamanlı giriş kilidi `Mutex<bool>` yerine RAII semaphore permit ile yönetiliyor, bayrağın takılı kalma riski ortadan kalktı.
+
+### Düzeltmeler
+- **Yeniden deneme güvenliği:** Deneme sonuçları "güvenli tekrar" (bağlantı kurulamadı, POST gitmedi), "belirsiz" (timeout/gövde) ve "kesin" (semantik) olarak sınıflandırılıyor. Belirsiz sonuçta kör POST tekrarı yerine oturum doğrulama isteği yapılıyor; kesin hatada döngü kırılıyor. Aynı girişin iki kez işlenmesi riski giderildi.
+- **Kota ve alan ayıklama kayıpları:** Türkçe büyük/küçük harf dönüşümü (`SON GİRİŞ` gibi alanların kaybı), blok düzenine bağımlı erken dönüş ve kota anahtarı eşleştirmesi düzeltildi. Kota dolu tespiti artık ham HTML yerine görünür DOM metnini tarıyor (`script`, `style`, gizli düğümler kapsam dışı).
+- **Çıkış/oturum doğrulaması:** Yönlendirme hedefi son yol bileşeninden (`;jsessionid` destekli) ve JSF partial-response gövdesindeki gerçek `<redirect url="...">` değerinden okunuyor.
+- **Önceki oturumu düşürme sonucu kontrol ediliyor:** Sessizce başarısız olabilen istek artık doğrulanıyor.
+- **Giriş öncesi gereksiz DNS çağrısı kritik yoldan çıkarıldı:** IP bilgisi kurulan bağlantının kendisinden alınıyor.
+- **Pencereye sığmayan arayüz:** Sabit 420×680 pencere, Windows'tan büyük font metriklerine sahip ortamlarda (ör. Linux) içeriği taşırıyor ve alt buton çubuğunu (`Çıkış Yap` / `Bağlan`) kesiyordu. Pencere 440×760'a büyütüldü ve sınırlı biçimde yeniden boyutlandırılabilir yapıldı (min 420×620, max 640×1100; maximize/fullscreen hâlâ kapalı). Ayrıca ekran içeriği kaydırılabilir bir gövdeye alındı: marka satırı ve alt çubuk her zaman görünür kalıyor, arada kalan içerik sığmazsa kaydırılıyor. Böylece taşma font, tema veya ölçek farkından bağımsız olarak yapısal olarak engellendi.
+- **Giriş ekranındaki yanlış güvenlik etiketi:** Altbilgideki "SSL kapalı · captive portal" yazısı, TLS doğrulaması bu sürümde açıldığı için artık doğru değildi; "TLS doğrulamalı · captive portal" olarak güncellendi ve uyarı noktası sarıdan yeşile çevrildi.
+
+### Bakım
+- `cargo test` artık gerçek kullanıcı veri dizinine yazmıyor; test derlemesinde veri dizini geçici dizine yönleniyor (derleme zamanı garantisi) ve iki koruma testiyle korunuyor.
+- Yeni testlerin gerçekten koruduğu, kasıtlı hata enjeksiyonuyla (mutasyon testi) doğrulandı.
+- Kaynak dosyalardaki yorum satırları temizlendi; her commit ayrı worktree'de derlenip test edilerek geçmişin bisect edilebilirliği doğrulandı.
+- Release binary artışı +12.680 bayt (%0,154) ile sınırlı kaldı.
+- **Çok platformlu yayın hattı:** CI yalnızca Windows'ta derleyip paketliyordu. Artık `hizli-kontrol` → `test` (Windows/Linux/macOS matrisi) → `paketle` → `release` akışı çalışıyor; sürüm etiketi atıldığında Windows (NSIS + portable), Linux (deb, rpm, AppImage) ve macOS (Intel + Apple Silicon için dmg/app) paketleri tek bir release'de yayımlanıyor.
+- **Updater manifesti tüm platformları kapsıyor:** Önceki hat `latest.json` içine yalnızca `windows-x86_64` yazıyordu; Linux ve macOS istemcileri kendi platformlarını bulamadığı için güncelleme kontrolü hata veriyordu. Yeni `scripts/release-manifest.py` üretilen her updater paketini manifeste ekliyor, imzasız pakette veya Windows girdisi eksikken yayını durduruyor ve `SHA256SUMS.txt` üretiyor.
+- **Sürüm doğrulaması platform bağımsız:** Windows'a özgü PowerShell denetimi, Cargo.toml'u kaynak kabul edip Cargo.lock, `app.js`, README rozeti, CHANGELOG başlığı ve git etiketi arasındaki tutarlılığı denetleyen `scripts/surum-kontrol.py` ile değiştirildi. Sürüm notu artık elle yazılmıyor, CHANGELOG'dan `scripts/changelog-bolum.py` ile üretiliyor.
+- Release yardımcı betikleri 13 testle korunuyor (`scripts/test_release_araclari.py`) ve her CI koşumunda çalışıyor.
+
+**Kapsam notu:** Bu turdaki doğrulamalar Linux x86_64 üzerinde yapıldı; Windows'a
+özgü kollar (DPAPI, `NotifyIpInterfaceChange`, NSIS paketleme) ve macOS paketleme
+CI'ın ilgili matris işlerinde derlenir. Zaman bütçesi sabitleri saha ölçümüyle
+ayarlanacak başlangıç değerleridir.
+
 ## [1.9.1] - 2026-06-15
 
 ### Düzeltmeler
@@ -89,6 +144,9 @@ sürümleme [Semantic Versioning](https://semver.org/lang/tr/) kurallarını tak
 
 - İlk kararlı sürüm.
 
+[1.10.0]: https://github.com/Toxpox/GSB-WiFi-AutoLogin/compare/v1.9.1...v1.10.0
+[1.9.1]: https://github.com/Toxpox/GSB-WiFi-AutoLogin/compare/v1.9.0...v1.9.1
+[1.9.0]: https://github.com/Toxpox/GSB-WiFi-AutoLogin/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/Toxpox/GSB-WiFi-AutoLogin/compare/v1.7.2...v1.8.0
 [1.7.2]: https://github.com/Toxpox/GSB-WiFi-AutoLogin/compare/v1.7.0...v1.7.2
 [1.7.0]: https://github.com/Toxpox/GSB-WiFi-AutoLogin/compare/v1.6.1...v1.7.0

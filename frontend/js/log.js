@@ -1,9 +1,6 @@
-// Log sistemi
 const logSatirlar = [];
 const MAX_LOG_SATIR = 300;
 
-// sadeceUi=true: satir dosyaya YAZILMAZ (backend kaynakli olaylar dosyaya
-// backend tarafindan yazilir; cift kayit olusmasin).
 function logYaz(mesaj, tip, sadeceUi) {
     const satir = { mesaj: mesaj || '', tip: tip || '' };
     logSatirlar.push(satir);
@@ -12,7 +9,6 @@ function logYaz(mesaj, tip, sadeceUi) {
     }
 
     if (!sadeceUi) {
-        // Dosyaya yazim arka planda; hata UI'yi asla bloklamaz.
         try {
             invoke('log_satiri_yaz', { satir: satir.mesaj, tip: satir.tip || null })
                 .catch(function() {});
@@ -46,7 +42,6 @@ function logPenceresiGuncelle() {
 }
 
 function logPanelAcKapa() {
-    // Ayni anda tek alt-panel acik kalsin (tanilama paneliyle cakismasin).
     var tani = document.getElementById('tani-panel');
     if (tani) tani.classList.remove('acik');
     document.getElementById('log-panel').classList.toggle('acik');
@@ -57,7 +52,6 @@ function logTemizle() {
     logPenceresiGuncelle();
 }
 
-// Event listeners
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('log-btn-giris').addEventListener('click', logPanelAcKapa);
     document.getElementById('log-btn-hosgeldin').addEventListener('click', logPanelAcKapa);

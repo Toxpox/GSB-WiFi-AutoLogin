@@ -10,9 +10,13 @@
       {
         "label": "main",
         "title": "GSB WiFi AutoLogin",
-        "width": 420,
-        "height": 680,
-        "resizable": false,
+        "width": 440,
+        "height": 760,
+        "minWidth": 420,
+        "minHeight": 620,
+        "maxWidth": 640,
+        "maxHeight": 1100,
+        "resizable": true,
         "maximizable": false,
         "fullscreen": false,
         "center": true,
@@ -37,9 +41,26 @@
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": true,
-    "icon": ["icons/wifi.ico"],
-    "targets": ["nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "targets": "all",
     "publisher": "Toxpox",
+    "category": "Utility",
+    "shortDescription": "GSB WiFi otomatik giris",
+    "longDescription": "KYK yurtlarinda kullanilan GSB WiFi agina otomatik giris yapan masaustu uygulamasi.",
+    "linux": {
+      "deb": {
+        "depends": ["libwebkit2gtk-4.1-0", "libgtk-3-0"]
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    },
     "windows": {
       "nsis": {
         "languages": ["Turkish"],

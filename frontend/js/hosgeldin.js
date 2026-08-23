@@ -1,4 +1,3 @@
-// Kota bittiğinde kartı %0 kalan olarak gösterir.
 function kotaKartiDoldu(kotaKart, kota, toplamMb) {
     kotaKart.classList.remove('gizli');
 
@@ -30,12 +29,9 @@ function kotaKartiDoldu(kotaKart, kota, toplamMb) {
     }
 }
 
-// gecisYok=true: kart yeniden doldurulur ama ekran gecisi yapilmaz (zaten
-// bagli ekrandayken "Bilgileri yenile" flicker olusturmasin).
 function hosgeldinGoster(bilgi, gecisYok) {
     document.getElementById('isim-lbl').textContent = bilgi.isim || '';
 
-    // Bilgi satirlari (Konum + Son Giris) — ikon + label + value
     var bilgiKart = document.getElementById('bilgi-kart');
     if (bilgi.son_giris || bilgi.konum) {
         bilgiKart.classList.remove('gizli');
@@ -67,7 +63,6 @@ function hosgeldinGoster(bilgi, gecisYok) {
         bilgiKart.classList.add('gizli');
     }
 
-    // Kota karti
     var kotaKart = document.getElementById('kota-kart');
     var kota = bilgi.kota || {};
     var toplamMb = parseFloat(kota.toplam_mb);
@@ -123,8 +118,6 @@ function hosgeldinGoster(bilgi, gecisYok) {
     if (!gecisYok) ekranGoster('ekran-hosgeldin');
 }
 
-// "Bilgileri yenile": yeniden giris yapmadan aktif oturumdan guncel
-// kullanici/kota bilgisini ceker ve karti (grafik dahil) gunceller.
 async function bilgileriYenile() {
     var btn = document.getElementById('bilgi-yenile-btn');
     if (btn) { btn.classList.add('donuyor'); btn.disabled = true; }
@@ -140,8 +133,6 @@ async function bilgileriYenile() {
     }
 }
 
-// Kota gecmisinden inline SVG sparkline + tukenme tahmini cizer. En az 2 gunluk
-// veri yoksa (tek nokta egri cizmez) gizli kalir. Harici grafik kutuphanesi yok.
 async function kotaGecmisiCiz() {
     var grafik = document.getElementById('kota-grafik');
     var cizim = document.getElementById('kota-grafik-cizim');
@@ -156,9 +147,6 @@ async function kotaGecmisiCiz() {
     var toplam = 0;
     gecmis.forEach(function(k) { if (k.toplam_mb > toplam) toplam = k.toplam_mb; });
 
-    // Yeterli veri yoksa karti gizlemek yerine bilgilendirici metin goster;
-    // boylece kullanici ozelligin var oldugunu ve verinin biriktigini bilir
-    // (grafik en az 2 farkli gunluk veriyle cizilir).
     if (gecmis.length < 2 || toplam <= 0) {
         if (tahminEl) tahminEl.textContent = '';
         cizim.innerHTML = '<div class="kota-grafik-bos">Grafik birkaç günlük kullanım verisiyle oluşur.</div>';
@@ -166,12 +154,11 @@ async function kotaGecmisiCiz() {
         return;
     }
 
-    // Sparkline: kalan_mb degerini [0..toplam] araliginda normalize eder.
     var n = gecmis.length;
     var noktalar = gecmis.map(function(k, i) {
         var x = n > 1 ? (i / (n - 1)) * 100 : 0;
         var oran = Math.max(0, Math.min(1, k.kalan_mb / toplam));
-        var y = 34 - oran * 30 + 1; // ust/alt 2px pay
+        var y = 34 - oran * 30 + 1;
         return x.toFixed(2) + ',' + y.toFixed(2);
     });
     var cizgi = noktalar.join(' ');
@@ -183,11 +170,9 @@ async function kotaGecmisiCiz() {
                 'vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>' +
         '</svg>';
 
-    // Tahmin: son yenilenmeden (kalan artisindan) bu yana olan segment uzerinden
-    // gunluk tuketim ortalamasi -> kalan / gunluk = kac gun sonra biter.
     var basla = 0;
     for (var i = 1; i < gecmis.length; i++) {
-        if (gecmis[i].kalan_mb > gecmis[i - 1].kalan_mb + 1) basla = i; // 1 MB tolerans
+        if (gecmis[i].kalan_mb > gecmis[i - 1].kalan_mb + 1) basla = i;
     }
     var seg = gecmis.slice(basla);
     var tahmin = '';
@@ -207,7 +192,6 @@ async function kotaGecmisiCiz() {
     grafik.classList.remove('gizli');
 }
 
-// Tepsi menusunden de cagrilir (app.js: tepsiOlaylariniDinle).
 async function cikisYap() {
     logYaz('Çıkış yapılıyor…', 'uyari');
 

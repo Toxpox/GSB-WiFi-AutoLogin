@@ -1,11 +1,7 @@
-// Baglanti tanilama paneli — asama asama self-test sonuclarini gosterir.
-// Sessiz otomatik-giris hatalarini (yanlis ag, DNS, kapali port, portal
-// degisikligi) somut teshise cevirir. Backend: tani_calistir komutu.
-
 function taniPanelAcKapa() {
     var panel = document.getElementById('tani-panel');
     if (!panel) return;
-    // Ayni anda tek alt-panel acik kalsin.
+
     var logPanel = document.getElementById('log-panel');
     if (logPanel) logPanel.classList.remove('acik');
     var acildi = !panel.classList.contains('acik');

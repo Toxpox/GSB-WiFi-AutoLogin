@@ -23,6 +23,32 @@
     overflow: hidden;
 }
 
+/* Kaydirilabilir icerik govdesi: marka satiri ve alt cubuk sabit kalir,
+   arada kalan icerik pencereye sigmazsa kaydirilir. Boylece "Cikis Yap"
+   veya "Baglan" butonu hicbir font metriginde pencere disinda kalmaz. */
+.ekran-govde {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    scrollbar-width: thin;
+    scrollbar-color: var(--cizgi-2) transparent;
+}
+.ekran-govde::-webkit-scrollbar { width: 8px; }
+.ekran-govde::-webkit-scrollbar-track { background: transparent; }
+.ekran-govde::-webkit-scrollbar-thumb {
+    background: var(--cizgi-2);
+    border-radius: 999px;
+}
+.ekran-govde::-webkit-scrollbar-thumb:hover { background: var(--gri-soluk); }
+
+/* Kaydirma sonunda son elemanin alt cubuga yapismamasi icin nefes payi. */
+.ekran-govde > :last-child {
+    padding-bottom: 18px;
+}
+
 /* ============ Brand row ============ */
 .brand {
     display: flex;
@@ -313,6 +339,8 @@
     border-radius: 999px;
     background: var(--sari);
 }
+/* TLS dogrulamasi v1.10.0 ile acildi: uyari degil, saglikli durum. */
+.ssl-uyari.ssl-ok .nokta { background: var(--yesil); }
 .foot-actions {
     display: flex;
     gap: 2px;

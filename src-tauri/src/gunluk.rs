@@ -1,26 +1,18 @@
-//! Sistem gunlugunun diske yazilmasi: append + boyut esikli tek yedekli
-//! rotasyon. UI'daki log paneli bellekte 300 satirla sinirli; bu modul hata
-//! bildirimi icin kalici kayit saglar.
-
 use crate::config;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-const MAX_BAYT: u64 = 1024 * 1024; // 1 MB ustunde rotasyon
+const MAX_BAYT: u64 = 1024 * 1024;
 const MAX_SATIR_KARAKTER: usize = 500;
 
-/// Yazim + rotasyon kontrolu ayni kilit altinda; ayrilirsa es zamanli iki
-/// komut cift rotasyon yarisina girer.
 static KILIT: Mutex<()> = Mutex::new(());
 
 pub fn log_dosya_yolu() -> PathBuf {
     config::log_dizini().join("uygulama.log")
 }
 
-/// Satiri tek satira indirger (log injection onlemi), kirpar ve zaman
-/// damgasiyla bicimler.
 fn satir_bicimle(zaman: &str, tip: &str, mesaj: &str) -> String {
     let temiz: String = mesaj
         .chars()
@@ -30,8 +22,6 @@ fn satir_bicimle(zaman: &str, tip: &str, mesaj: &str) -> String {
     format!("[{}] [{}] {}", zaman, tip, temiz)
 }
 
-/// Dosyaya bir log satiri ekler. Loglama hicbir akisi kirmamali; tum
-/// hatalar sessizce yutulur.
 pub fn yaz(tip: &str, mesaj: &str) {
     let _kilit = KILIT.lock().unwrap_or_else(|e| e.into_inner());
     let zaman = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
@@ -44,8 +34,7 @@ fn yaz_ic(satir: &str) -> std::io::Result<()> {
     fs::create_dir_all(&dizin)?;
     let yol = log_dosya_yolu();
     dondur_gerekirse(&yol);
-    // Her yazimda ac-yaz-kapat: kalici handle tutulmadigi icin Windows'ta
-    // rotasyondaki rename acik-handle sorununa takilmaz.
+
     let mut dosya = OpenOptions::new().create(true).append(true).open(&yol)?;
     writeln!(dosya, "{}", satir)
 }
@@ -60,7 +49,6 @@ fn dondur_gerekirse(yol: &Path) {
     let yedek = yol.with_extension("log.1");
     let _ = fs::remove_file(&yedek);
     if fs::rename(yol, &yedek).is_err() {
-        // Rotasyon hatasi loglamayi kirmasin: dosyayi sifirla ve devam et.
         let _ = fs::write(yol, b"");
     }
 }
@@ -80,5 +68,31 @@ mod tests {
         let uzun = "a".repeat(2 * MAX_SATIR_KARAKTER);
         let satir = satir_bicimle("z", "bilgi", &uzun);
         assert_eq!(satir.len(), "[z] [bilgi] ".len() + MAX_SATIR_KARAKTER);
+    }
+
+    #[test]
+    fn test_logu_gercek_kullanici_dizinine_yazmaz() {
+        let yol = log_dosya_yolu();
+        assert!(
+            yol.starts_with(std::env::temp_dir()),
+            "test logu gecici dizinde olmali, gelen: {}",
+            yol.display()
+        );
+        assert!(
+            !yol.to_string_lossy().contains("GSB WiFi AutoLogin"),
+            "test kosumu gercek kullanici log dosyasini kirletmemeli"
+        );
+    }
+
+    #[test]
+    fn yazilan_satir_dosyada_okunabilir() {
+        yaz("olcum", "login_total_ms=1234 sonuc=ok retry_count=0");
+
+        let icerik = fs::read_to_string(log_dosya_yolu()).expect("log dosyasi olusmaliydi");
+        assert!(
+            icerik.contains("[olcum] login_total_ms=1234 sonuc=ok retry_count=0"),
+            "olcum satiri log dosyasina yazilmali, dosya: {}",
+            icerik
+        );
     }
 }

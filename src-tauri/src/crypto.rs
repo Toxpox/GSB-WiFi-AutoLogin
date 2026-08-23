@@ -20,8 +20,6 @@ fn makine_adi() -> String {
         .unwrap_or_else(|_| "unknown".to_string())
 }
 
-/// v2 anahtari: makine adi + isletim sistemi kullanici adi. MAC adresine
-/// bagli degildir; MAC rastgelelestirme veya adaptor degisikligi cozmeyi bozmaz.
 fn anahtar() -> &'static [u8; 32] {
     ANAHTAR.get_or_init(|| {
         let kullanici = std::env::var("USERNAME")
@@ -35,8 +33,6 @@ fn anahtar() -> &'static [u8; 32] {
     })
 }
 
-/// v1 anahtari (MAC + makine adi). Yalnizca eski kayitlari cozebilmek icin
-/// tutulur; yeni kayitlar her zaman v2 anahtariyla sifrelenir.
 fn eski_anahtar() -> &'static [u8; 32] {
     ESKI_ANAHTAR.get_or_init(|| {
         let mac = mac_address::get_mac_address()
@@ -48,18 +44,13 @@ fn eski_anahtar() -> &'static [u8; 32] {
     })
 }
 
-/// v3 (Windows DPAPI) kayitlari bu onekle isaretlenir; onek'siz kayitlar eski
-/// AES-GCM (v2/v1) formatidir ve geriye donuk olarak hala cozulur.
 const DPAPI_ONEK: &str = "v3:";
 
 pub fn sifrele(metin: &str) -> Result<String, String> {
     if metin.is_empty() {
         return Ok(String::new());
     }
-    // Windows'ta tercih: DPAPI (CryptProtectData) — anahtar isletim sistemi
-    // tarafindan oturum/kullaniciya baglanir; makine adi+kullanici adindan
-    // turetilen (yani yeniden uretilebilen) PBKDF2 anahtarindan daha guclu.
-    // DPAPI kullanilamazsa AES-GCM v2'ye duser.
+
     #[cfg(windows)]
     {
         if let Ok(korunan) = dpapi::koru(metin.as_bytes()) {
@@ -97,7 +88,7 @@ pub fn coz(sifreli: &str) -> Result<String, String> {
     if sifreli.is_empty() {
         return Ok(String::new());
     }
-    // v3 (DPAPI) kaydi: onek'i ayikla, base64 coz, DPAPI ile ac.
+
     if let Some(b64) = sifreli.strip_prefix(DPAPI_ONEK) {
         #[cfg(windows)]
         {
@@ -111,13 +102,10 @@ pub fn coz(sifreli: &str) -> Result<String, String> {
             return Err("DPAPI ile sifrelenmis kayit bu platformda cozulemez".into());
         }
     }
-    // Eski (onek'siz) AES-GCM kayitlari: once v2 anahtari, sonra v1 fallback.
+
     coz_ile(anahtar(), sifreli).or_else(|_| coz_ile(eski_anahtar(), sifreli))
 }
 
-/// Windows Veri Koruma API'si (DPAPI) sarmalayicisi. Kimlik bilgisini oturum
-/// acan Windows kullanicisina baglar; cozme yalnizca ayni kullanici hesabinda
-/// mumkundur. Uygulamaya ozgu entropi ile baglanir.
 #[cfg(windows)]
 mod dpapi {
     use windows::core::PCWSTR;
@@ -142,7 +130,6 @@ mod dpapi {
         }
     }
 
-    /// Cikti blob'unu kopyalar ve API'nin ayirdigi bellegi LocalFree ile birakir.
     unsafe fn cikti_al(cikis: &CRYPT_INTEGER_BLOB) -> Vec<u8> {
         if cikis.pbData.is_null() || cikis.cbData == 0 {
             return Vec::new();
@@ -215,7 +202,6 @@ mod tests {
 
     #[test]
     fn eski_anahtarla_sifrelenen_veri_cozulur() {
-        // v1 (MAC tabanli) anahtarla sifrelenmis veriyi simule et.
         let cipher = Aes256Gcm::new_from_slice(eski_anahtar()).unwrap();
         let nonce_bytes: [u8; 12] = rand::random();
         let nonce = Nonce::from_slice(&nonce_bytes);

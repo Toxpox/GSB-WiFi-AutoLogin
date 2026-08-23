@@ -6,20 +6,19 @@ use std::process::Command;
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, State};
-use tokio::sync::{Mutex, Notify};
+use tokio::sync::{Mutex, Notify, Semaphore};
 
 pub struct AppState {
     pub client: Mutex<network::PortalClients>,
-    pub giris_aktif: Mutex<bool>,
-    pub son_html: Mutex<String>,
-    /// Son basarili girisin kimlik bilgileri; otomatik yeniden baglanma
-    /// dongusu kullanir. Cikista temizlenir.
+
+    pub giris_izni: Arc<Semaphore>,
+
+    pub son_maksimum_form: Mutex<Option<parser::FormBilgi>>,
+
     pub son_kimlik: Mutex<Option<(String, String)>>,
-    /// guncelleme_kontrol'un buldugu guncelleme; guncelleme_kur ikinci kez
-    /// check etmeden bunu kullanir.
+
     pub bekleyen_guncelleme: Mutex<Option<tauri_plugin_updater::Update>>,
-    /// Yerel ag-olayi (IP arayuz degisikligi) tetiklenince uyandirilir; yeniden
-    /// baglanma dongusu 12 saatlik araligi beklemeden kontrol yapar.
+
     pub ag_olay: Arc<Notify>,
 }
 
@@ -27,8 +26,8 @@ impl AppState {
     pub fn new() -> Result<Self, GSBError> {
         Ok(Self {
             client: Mutex::new(network::client_olustur()?),
-            giris_aktif: Mutex::new(false),
-            son_html: Mutex::new(String::new()),
+            giris_izni: Arc::new(Semaphore::new(1)),
+            son_maksimum_form: Mutex::new(None),
             son_kimlik: Mutex::new(None),
             bekleyen_guncelleme: Mutex::new(None),
             ag_olay: Arc::new(Notify::new()),
@@ -87,9 +86,6 @@ fn giris_sonuc_olustur(
     }
 }
 
-/// Kimlik bilgilerinin yalnizca GSB portaline gonderilmesini garanti eder.
-/// Portal istemcisi SSL dogrulamasini kapattigi icin URL backend tarafinda
-/// allowlist ile sinirlanmalidir.
 fn portal_url_dogrula(url: &str) -> Result<(), GSBError> {
     let gecerli = url::Url::parse(url)
         .map(|u| u.scheme() == "https" && u.host_str() == Some(config::PORTAL_HOST))
@@ -113,26 +109,22 @@ pub async fn giris(
     state: State<'_, AppState>,
 ) -> Result<GirisSonuc, String> {
     portal_url_dogrula(&url).map_err(|e: GSBError| -> String { e.into() })?;
-    {
-        let mut aktif = state.giris_aktif.lock().await;
-        if *aktif {
-            return Err("Giris zaten devam ediyor".into());
-        }
-        *aktif = true;
-    }
+    let _izin = state
+        .giris_izni
+        .clone()
+        .try_acquire_owned()
+        .map_err(|_| "Giris zaten devam ediyor".to_string())?;
 
     let sonuc = async {
-        // Her giris denemesinde temiz cookie jar ile basla.
         {
             let mut client = state.client.lock().await;
             *client = network::client_olustur()?;
         }
         let client = state.client.lock().await.normal.clone();
 
-        let ip = network::ip_bul(&url).await.ok();
         match network::giris_yap(&client, &url, &kullanici, &sifre).await {
-            Ok(html) => {
-                *state.son_html.lock().await = html.clone();
+            Ok(yanit) => {
+                let network::GirisYaniti { html, ip } = yanit;
                 *state.son_kimlik.lock().await = Some((kullanici.clone(), sifre.clone()));
                 let bilgi = parser::bilgi_cek(&html);
                 let kayit = config::kullanici_kaydet(&kullanici, &sifre);
@@ -142,11 +134,11 @@ pub async fn giris(
                 cihaz_bilgisi,
                 html,
             }) => {
-                // HTML'i sakla - onceki oturumu kapatmak icin gerekli
-                *state.son_html.lock().await = html;
+                *state.son_maksimum_form.lock().await =
+                    Some(parser::maksimum_sayfa_cek(&html).form);
                 Err(GSBError::MaksimumCihaz {
                     cihaz_bilgisi,
-                    html: String::new(), // frontend'e gondermeye gerek yok
+                    html: String::new(),
                 })
             }
             Err(e) => Err(e),
@@ -154,7 +146,6 @@ pub async fn giris(
     }
     .await;
 
-    *state.giris_aktif.lock().await = false;
     if let Ok(s) = &sonuc {
         tepsi_ipucu_guncelle(&app, "Bağlı");
         kota_bildirimi_isle(&app, &s.bilgi);
@@ -170,16 +161,13 @@ pub async fn cikis(app: AppHandle, state: State<'_, AppState>) -> Result<bool, S
         .await
         .map_err(|e: GSBError| -> String { e.into() })?;
     if basarili {
-        *state.son_html.lock().await = String::new();
+        *state.son_maksimum_form.lock().await = None;
         *state.son_kimlik.lock().await = None;
         tepsi_ipucu_guncelle(&app, "Bağlı değil");
     }
     Ok(basarili)
 }
 
-/// Bagli ekrandaki "Bilgileri yenile" butonu: yeniden giris yapmadan, aktif
-/// oturumla portaldan guncel kullanici/kota bilgisini ceker. Kota gecmisi ve
-/// bildirim akisi da bu yolla guncellenir.
 #[tauri::command]
 pub async fn bilgi_yenile(
     app: AppHandle,
@@ -189,7 +177,6 @@ pub async fn bilgi_yenile(
     let html = network::oturum_bilgisi_getir(&client)
         .await
         .map_err(|e: GSBError| e.to_string())?;
-    *state.son_html.lock().await = html.clone();
     let bilgi = parser::bilgi_cek(&html);
     tepsi_ipucu_guncelle(&app, "Bağlı");
     kota_bildirimi_isle(&app, &bilgi);
@@ -233,15 +220,12 @@ pub fn log_satiri_yaz(satir: String, tip: Option<String>) {
 #[tauri::command]
 pub fn log_klasoru_ac() -> Result<(), String> {
     let dizin = config::log_dizini();
-    // Klasor frontend'den alinmaz, backend'de hesaplanir: keyfi yol acma
-    // yuzeyi olusmaz (guvenli_github_url ile ayni felsefe).
+
     std::fs::create_dir_all(&dizin).map_err(|e| format!("Log klasoru olusturulamadi: {}", e))?;
     klasor_ac(&dizin).map_err(|e| format!("Klasor acilamadi: {}", e))
 }
 
 fn klasor_ac(yol: &std::path::Path) -> std::io::Result<()> {
-    // Not: Windows'ta explorer basarili acilista bile 1 dondurebilir;
-    // exit code'a bakilmaz, spawn yeterli.
     #[cfg(target_os = "windows")]
     let mut komut = Command::new("explorer");
 
@@ -326,10 +310,6 @@ struct GuncellemeIlerleme {
     indirilen_mb: f64,
 }
 
-/// Updater yalnizca NSIS kurulumunda calismali: portable exe'den
-/// calistirilirsa installer kurulum yapar ama portable dosya guncellenmez.
-/// NSIS perUser kurulumu %LOCALAPPDATA% altina acildigi icin exe yolu
-/// buna gore kontrol edilir.
 fn kurulu_uygulama_mi() -> bool {
     let exe = match std::env::current_exe() {
         Ok(yol) => yol,
@@ -340,9 +320,6 @@ fn kurulu_uygulama_mi() -> bool {
         .unwrap_or(false)
 }
 
-/// Arka plan guncelleme kontrolu. Guncelleme varsa surum bilgisini doner ve
-/// guncelleme nesnesini state'e koyar; portable kullanimda hata doner
-/// (frontend release-sayfasi akisina duser).
 #[tauri::command]
 pub async fn guncelleme_kontrol(
     app: AppHandle,
@@ -372,9 +349,6 @@ pub async fn guncelleme_kontrol(
     }
 }
 
-/// guncelleme_kontrol'un buldugu guncellemeyi indirir ve kurar. Indirme
-/// ilerlemesi `guncelleme-ilerleme` event'iyle yayinlanir. Kurulum passive
-/// NSIS calistirir; uygulama installer tarafindan kapatilip yeniden baslar.
 #[tauri::command]
 pub async fn guncelleme_kur(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
     let guncelleme = state
@@ -459,30 +433,45 @@ pub async fn maksimum_cihaz_isle(
     state: State<'_, AppState>,
 ) -> Result<GirisSonuc, String> {
     portal_url_dogrula(&url).map_err(|e: GSBError| -> String { e.into() })?;
-    {
-        let mut aktif = state.giris_aktif.lock().await;
-        if *aktif {
-            return Err("Giris zaten devam ediyor".into());
-        }
-        *aktif = true;
-    }
+    let _izin = state
+        .giris_izni
+        .clone()
+        .try_acquire_owned()
+        .map_err(|_| "Giris zaten devam ediyor".to_string())?;
 
     let sonuc = async {
-        let html = state.son_html.lock().await.clone();
+        let form = state.son_maksimum_form.lock().await.clone();
+        let Some(form) = form else {
+            return Err(GSBError::GirisBasarisiz {
+                mesaj: "Maksimum cihaz formu yok".into(),
+                kullanici_mesaji: "Onceki oturum bilgisi bulunamadi. Lutfen yeniden giris deneyin."
+                    .into(),
+            }
+            .into());
+        };
         let mevcut_client = state.client.lock().await.normal.clone();
 
-        network::onceki_oturumu_kapat(&mevcut_client, &html, &url).await;
-        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        let kapatildi = network::onceki_oturumu_kapat(&mevcut_client, &form, &url).await;
+        if !kapatildi {
+            return Err(GSBError::GirisBasarisiz {
+                mesaj: "Onceki oturum kapatilamadi".into(),
+                kullanici_mesaji:
+                    "Onceki cihazin oturumu kapatilamadi. Lutfen manuel tekrar deneyin.".into(),
+            }
+            .into());
+        }
 
-        // Eski oturum cerezlerini tasimamak icin ikinci denemeden once istemciyi yenile.
+        network::oturum_dusmesini_bekle(&mevcut_client).await;
+
         {
             let mut client = state.client.lock().await;
             *client = network::client_olustur().map_err(|e: GSBError| -> String { e.into() })?;
         }
         let yeni_client = state.client.lock().await.normal.clone();
 
-        let yeni_html = match network::giris_yap(&yeni_client, &url, &kullanici, &sifre).await {
-            Ok(html) => html,
+        let (yeni_html, ip) = match network::giris_yap(&yeni_client, &url, &kullanici, &sifre).await
+        {
+            Ok(yanit) => (yanit.html, yanit.ip),
             Err(GSBError::MaksimumCihaz { .. }) => {
                 return Err(GSBError::GirisBasarisiz {
                     mesaj: "Maksimum cihaz limiti devam ediyor".into(),
@@ -495,16 +484,13 @@ pub async fn maksimum_cihaz_isle(
             Err(e) => return Err(e.into()),
         };
 
-        *state.son_html.lock().await = yeni_html.clone();
         *state.son_kimlik.lock().await = Some((kullanici.clone(), sifre.clone()));
         let bilgi = parser::bilgi_cek(&yeni_html);
-        let ip = network::ip_bul(&url).await.ok();
         let kayit = config::kullanici_kaydet(&kullanici, &sifre);
         Ok(giris_sonuc_olustur(bilgi, ip, kayit))
     }
     .await;
 
-    *state.giris_aktif.lock().await = false;
     if let Ok(s) = &sonuc {
         tepsi_ipucu_guncelle(&app, "Bağlı");
         kota_bildirimi_isle(&app, &s.bilgi);
@@ -535,7 +521,6 @@ pub fn ayarlari_kaydet(app: AppHandle, ayarlar: config::UygulamaAyarlari) -> Res
             .enable()
             .map_err(|e| format!("Baslangicta calistirma ayarlanamadi: {}", e))?;
     } else {
-        // Kayit zaten yoksa disable hata verebilir; sessizce yok say.
         let _ = otomatik.disable();
     }
     Ok(())
@@ -546,12 +531,10 @@ pub async fn gsb_aginda() -> bool {
     network::gsb_aginda_mi().await
 }
 
-// --- Baglanti tanilama (self-test) ---
-
 #[derive(serde::Serialize)]
 pub struct TaniSonuc {
     pub ad: String,
-    /// "ok" | "uyari" | "hata" | "bilgi" — frontend renklendirmesi icin.
+
     pub durum: String,
     pub detay: String,
 }
@@ -566,25 +549,44 @@ fn tani(ad: &str, durum: &str, detay: String) -> TaniSonuc {
 
 async fn tcp_testi(ip: &str, port: u16) -> bool {
     let adr = if ip.contains(':') {
-        format!("[{}]:{}", ip, port) // IPv6
+        format!("[{}]:{}", ip, port)
     } else {
         format!("{}:{}", ip, port)
     };
-    matches!(
+    let olcer = crate::olcum::AsamaOlcer::basla(crate::olcum::Asama::TcpConnect);
+    let baglandi = matches!(
         tokio::time::timeout(Duration::from_secs(3), tokio::net::TcpStream::connect(&adr)).await,
         Ok(Ok(_))
-    )
+    );
+    let sonuc: Result<(), ()> = if baglandi { Ok(()) } else { Err(()) };
+    olcer.bitir(&sonuc);
+    baglandi
 }
 
-/// Asama asama baglanti tanilamasi. Mevcut, test edilmis ag fonksiyonlarini
-/// yeniden kullanir; sessiz otomatik-giris hatalarini (yanlis ag, DNS, kapali
-/// port, portal degisikligi) somut teshise cevirir.
 #[tauri::command]
 pub async fn tani_calistir(state: State<'_, AppState>) -> Result<Vec<TaniSonuc>, String> {
     let mut sonuclar = Vec::new();
 
-    // 1. GSB agi algilama
-    let gsb = network::gsb_aginda_mi().await;
+    let clients = state.client.lock().await.clone();
+    let (ip, net, portal) = tokio::join!(
+        network::ip_bul(config::GIRIS_URL),
+        network::internet_var_mi(),
+        network::portal_erisim_testi(&clients)
+    );
+
+    let gsb = match &ip {
+        Ok(adr) => adr
+            .parse::<std::net::IpAddr>()
+            .map(|adres| network::ozel_ip_mi(&adres))
+            .unwrap_or(false),
+        Err(_) => false,
+    };
+    let tcp = match &ip {
+        Ok(adr) => tcp_testi(adr, 443).await,
+        Err(_) => false,
+    };
+    let gsb = gsb || tcp;
+
     sonuclar.push(tani(
         "GSB ağı",
         if gsb { "ok" } else { "hata" },
@@ -595,8 +597,6 @@ pub async fn tani_calistir(state: State<'_, AppState>) -> Result<Vec<TaniSonuc>,
         },
     ));
 
-    // 2. DNS cozumleme
-    let ip = network::ip_bul(config::GIRIS_URL).await;
     match &ip {
         Ok(adr) => sonuclar.push(tani(
             "DNS çözümleme",
@@ -613,13 +613,11 @@ pub async fn tani_calistir(state: State<'_, AppState>) -> Result<Vec<TaniSonuc>,
         )),
     }
 
-    // 3. TCP baglantisi (:443)
     if let Ok(adr) = &ip {
-        let baglandi = tcp_testi(adr, 443).await;
         sonuclar.push(tani(
             "TCP bağlantısı (:443)",
-            if baglandi { "ok" } else { "hata" },
-            if baglandi {
+            if tcp { "ok" } else { "hata" },
+            if tcp {
                 format!("{}:443 erişilebilir.", adr)
             } else {
                 format!("{}:443 bağlantı kurulamadı.", adr)
@@ -627,8 +625,6 @@ pub async fn tani_calistir(state: State<'_, AppState>) -> Result<Vec<TaniSonuc>,
         ));
     }
 
-    // 4. Internet / captive oturum durumu
-    let net = network::internet_var_mi().await;
     sonuclar.push(tani(
         "İnternet / oturum",
         if net { "ok" } else { "uyari" },
@@ -639,9 +635,7 @@ pub async fn tani_calistir(state: State<'_, AppState>) -> Result<Vec<TaniSonuc>,
         },
     ));
 
-    // 5. Portal erisimi (index.html)
-    let clients = state.client.lock().await.clone();
-    match network::portal_erisim_testi(&clients).await {
+    match portal {
         Ok(kod) => sonuclar.push(tani(
             "Portal erişimi",
             if (200..400).contains(&kod) {
@@ -658,7 +652,6 @@ pub async fn tani_calistir(state: State<'_, AppState>) -> Result<Vec<TaniSonuc>,
         )),
     }
 
-    // 6. Kayitli oturum (otomatik yeniden baglanma icin kimlik var mi)
     let oturum = state.son_kimlik.lock().await.is_some();
     sonuclar.push(tani(
         "Kayıtlı oturum",
@@ -673,16 +666,12 @@ pub async fn tani_calistir(state: State<'_, AppState>) -> Result<Vec<TaniSonuc>,
     Ok(sonuclar)
 }
 
-/// Tepsi ikonunun arac ipucunu bagli/bagli degil durumuna gore gunceller.
 pub fn tepsi_ipucu_guncelle(app: &AppHandle, durum: &str) {
     if let Some(tepsi) = app.tray_by_id("ana-tepsi") {
         let _ = tepsi.set_tooltip(Some(format!("GSB WiFi AutoLogin — {}", durum)));
     }
 }
 
-// --- Kota bildirimleri ---
-
-/// Kalan kota bu oranin altina dusunce bir kez bildirim gonderilir.
 const KOTA_DUSUK_ESIK: f64 = 0.20;
 
 fn bildirim_gonder(app: &AppHandle, baslik: &str, govde: &str) {
@@ -705,9 +694,6 @@ fn kota_orani(bilgi: &KullaniciBilgi) -> Option<f64> {
     }
 }
 
-/// Hangi bildirimin gonderilecegine ve yeni duruma karar verir. Ayni esik
-/// icin ikinci kez bildirim uretmez; kota esigin ustune cikinca (yenilenme)
-/// bayraklari sifirlar.
 fn kota_bildirimi_sec(
     oran: Option<f64>,
     kota_doldu: bool,
@@ -747,12 +733,10 @@ fn kota_bildirimi_sec(
             yeni,
         )
     } else {
-        // Kota yeterli/yenilenmis: bir sonraki dusus yeniden bildirilsin.
         (None, config::BildirimDurumu::default())
     }
 }
 
-/// Basarili giris sonrasi kota durumuna gore Windows bildirimi gonderir.
 pub fn kota_bildirimi_isle(app: &AppHandle, bilgi: &KullaniciBilgi) {
     if !config::ayarlari_oku().kota_bildirim {
         return;
@@ -767,11 +751,6 @@ pub fn kota_bildirimi_isle(app: &AppHandle, bilgi: &KullaniciBilgi) {
     }
 }
 
-// --- Kota gecmisi (grafik + tukenme tahmini) ---
-
-/// Basarili giris sonrasi o gune ait kota anlik goruntusunu kaydeder. Yalnizca
-/// kalan/toplam MB cozulebiliyorsa ve toplam > 0 ise yazar (kota dolu/eksik
-/// veride gecmis bozulmaz).
 pub fn kota_gecmisi_isle(bilgi: &KullaniciBilgi) {
     let kalan = bilgi
         .kota
@@ -803,75 +782,53 @@ struct YenidenBaglanmaDurumu {
 }
 
 fn yeniden_baglanma_bildir(app: &AppHandle, tip: &'static str, mesaj: String) {
-    // Dosyaya backend yazar: uygulama tepsideyken webview'in olaylari
-    // islemesine guvenilemez. Frontend listener'i yalnizca UI'yi gunceller
-    // (sadeceUi bayragiyla; cift kayit olusmaz).
     crate::gunluk::yaz(tip, &mesaj);
     let _ = app.emit("yeniden-baglanma", YenidenBaglanmaDurumu { tip, mesaj });
 }
 
-/// Uygulama acik kaldigi surece oturumun canli olup olmadigini kontrol eder;
-/// portal oturumu dustuyse son basarili kimlik bilgileriyle yeniden giris
-/// yapar. Iki tetikleyici vardir: (1) yerel ag-olayi (IP arayuz degisikligi —
-/// Wi-Fi baglandigi an), (2) guvenlik agi olarak 12 saatlik aralik. main.rs
-/// setup'inda bir kez baslatilir.
 pub async fn yeniden_baglanma_dongusu(app: AppHandle) {
-    // Arayuz degisiminden sonra DHCP/baglanti oturmasi icin kisa bekleme.
-    const AG_OLAY_BEKLEME_SN: u64 = 4;
-    // Olay firtinalarinda (tek baglanmada birden cok bildirim) art arda
-    // kontrolu engellemek icin asgari aralik.
-    const AG_OLAY_COOLDOWN_SN: u64 = 45;
-
     let notify = app.state::<AppState>().ag_olay.clone();
     let periyot = Duration::from_secs(config::YENIDEN_BAGLAN_ARALIK_SAAT * 3600);
-    let mut son_olay_kontrol: Option<std::time::Instant> = None;
 
     loop {
-        // 12 saatlik aralik dolana kadar bekle; bu arada ag-olayi gelirse
-        // erken uyan (timeout Ok = olaydan, Err = zamanlanmis kontrol).
         let olaydan = tokio::time::timeout(periyot, notify.notified())
             .await
             .is_ok();
 
         if olaydan {
-            tokio::time::sleep(Duration::from_secs(AG_OLAY_BEKLEME_SN)).await;
-            if let Some(t) = son_olay_kontrol {
-                if t.elapsed() < Duration::from_secs(AG_OLAY_COOLDOWN_SN) {
-                    continue;
-                }
-            }
-            son_olay_kontrol = Some(std::time::Instant::now());
+            olay_firtinasini_yatistir(&notify).await;
         }
 
-        // olaydan = true ise oturum-aktif "soluk" logu bastirilir (her ag
-        // degisikliginde log kirliligi olmasin); yalnizca gercekten yeniden
-        // baglanildiginda ve hatada log uretilir.
         yeniden_baglanmayi_dene(&app, olaydan).await;
     }
 }
 
+const AG_OLAY_SESSIZLIK_SN: u64 = 4;
+
+async fn olay_firtinasini_yatistir(notify: &Notify) {
+    let pencere = Duration::from_secs(AG_OLAY_SESSIZLIK_SN);
+    while tokio::time::timeout(pencere, notify.notified())
+        .await
+        .is_ok()
+    {}
+}
+
 async fn yeniden_baglanmayi_dene(app: &AppHandle, sessiz_aktif: bool) {
-    // Kullanici ayardan kapattiysa kontrol etme.
     if !config::ayarlari_oku().yeniden_baglan {
         return;
     }
 
     let state = app.state::<AppState>();
 
-    // Basarili giris yapilmadiysa veya kullanici cikis yaptiysa kontrol etme.
     let Some((kullanici, sifre)) = state.son_kimlik.lock().await.clone() else {
         return;
     };
 
-    // GSB aginda degilsek giris denemesi anlamsiz; sessizce bekle.
     if !network::gsb_aginda_mi().await {
         return;
     }
 
     if network::internet_var_mi().await {
-        // Oturum canli: gunluk kota anlik goruntusunu (gun basina en fazla bir
-        // kez) yakala ki her zaman bagli kalan kullanicilarda kullanim grafigi
-        // verisi birikebilsin. Best-effort: hata/eksik veri sessizce yutulur.
         let bugun = chrono::Local::now().format("%Y-%m-%d").to_string();
         if !config::kota_gecmisi_oku().iter().any(|k| k.tarih == bugun) {
             let client = state.client.lock().await.normal.clone();
@@ -885,14 +842,9 @@ async fn yeniden_baglanmayi_dene(app: &AppHandle, sessiz_aktif: bool) {
         return;
     }
 
-    // Manuel giris devam ediyorsa cakisma; bu turu atla.
-    {
-        let mut aktif = state.giris_aktif.lock().await;
-        if *aktif {
-            return;
-        }
-        *aktif = true;
-    }
+    let Ok(_izin) = state.giris_izni.clone().try_acquire_owned() else {
+        return;
+    };
 
     yeniden_baglanma_bildir(
         app,
@@ -900,8 +852,8 @@ async fn yeniden_baglanmayi_dene(app: &AppHandle, sessiz_aktif: bool) {
         "Bağlantı kontrolü: oturum düşmüş, yeniden bağlanılıyor…".to_string(),
     );
 
+    let yeniden_olcer = crate::olcum::AsamaOlcer::basla(crate::olcum::Asama::YenidenBaglanmaToplam);
     let sonuc = async {
-        // Manuel giris akisindaki gibi temiz cookie jar ile basla.
         {
             let mut client = state.client.lock().await;
             *client = network::client_olustur()?;
@@ -910,18 +862,18 @@ async fn yeniden_baglanmayi_dene(app: &AppHandle, sessiz_aktif: bool) {
         network::giris_yap(&client, config::GIRIS_URL, &kullanici, &sifre).await
     }
     .await;
+    yeniden_olcer.bitir(&sonuc);
 
     match sonuc {
-        Ok(html) => {
+        Ok(network::GirisYaniti { html, .. }) => {
             let bilgi = parser::bilgi_cek(&html);
-            *state.son_html.lock().await = html;
             tepsi_ipucu_guncelle(app, "Bağlı");
             yeniden_baglanma_bildir(
                 app,
                 "basarili",
                 "Oturum otomatik olarak yenilendi.".to_string(),
             );
-            // Kullanici uygulamayi tepside tutuyorsa kota uyarisini buradan alir.
+
             kota_bildirimi_isle(app, &bilgi);
             kota_gecmisi_isle(&bilgi);
         }
@@ -932,8 +884,7 @@ async fn yeniden_baglanmayi_dene(app: &AppHandle, sessiz_aktif: bool) {
                 "hata",
                 format!("Otomatik yeniden bağlanma başarısız: {}", e),
             );
-            // Pencere tepsideyken kullanicinin haberi olsun; gunde en fazla
-            // iki kontrol oldugu icin bildirim yagmuru riski yok.
+
             bildirim_gonder(
                 app,
                 "Bağlantı Koptu",
@@ -941,8 +892,6 @@ async fn yeniden_baglanmayi_dene(app: &AppHandle, sessiz_aktif: bool) {
             );
         }
     }
-
-    *state.giris_aktif.lock().await = false;
 }
 
 #[cfg(test)]
@@ -969,22 +918,18 @@ mod tests {
     fn kota_bildirimi_esik_altinda_bir_kez_gonderilir() {
         let temiz = config::BildirimDurumu::default();
 
-        // Esik altina ilk dusus: bildirim var, bayrak kalkar.
         let (bildirim, durum) = kota_bildirimi_sec(Some(0.15), false, temiz);
         assert!(bildirim.is_some());
         assert!(durum.dusuk_bildirildi);
 
-        // Ayni durumda ikinci kontrol: tekrar bildirim yok.
         let (bildirim, durum) = kota_bildirimi_sec(Some(0.10), false, durum);
         assert!(bildirim.is_none());
 
-        // Kota doldu: ayri bildirim, bir kez.
         let (bildirim, durum) = kota_bildirimi_sec(None, true, durum);
         assert_eq!(bildirim.unwrap().0, "Kota Doldu");
         let (bildirim, durum) = kota_bildirimi_sec(None, true, durum);
         assert!(bildirim.is_none());
 
-        // Kota yenilendi (esik ustu): bayraklar sifirlanir, dusus tekrar bildirilir.
         let (bildirim, durum) = kota_bildirimi_sec(Some(0.95), false, durum);
         assert!(bildirim.is_none());
         assert_eq!(durum, config::BildirimDurumu::default());
@@ -1026,5 +971,42 @@ mod tests {
         assert!(!guvenli_github_url(
             "http://github.com/Toxpox/GSB-WiFi-AutoLogin"
         ));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn olay_firtinasi_son_olaydan_sonra_yatisir() {
+        let notify = Arc::new(Notify::new());
+        let pencere = Duration::from_secs(AG_OLAY_SESSIZLIK_SN);
+
+        let uretici = notify.clone();
+        tokio::spawn(async move {
+            for _ in 0..5 {
+                tokio::time::sleep(pencere / 2).await;
+                uretici.notify_one();
+            }
+        });
+
+        let baslangic = tokio::time::Instant::now();
+        olay_firtinasini_yatistir(&notify).await;
+        let gecen = baslangic.elapsed();
+
+        assert!(
+            gecen >= (pencere * 5) / 2 + pencere,
+            "debounce son olaydan once dondu: {:?}",
+            gecen
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn tek_olayda_yalnizca_bir_pencere_beklenir() {
+        let notify = Arc::new(Notify::new());
+        let baslangic = tokio::time::Instant::now();
+
+        olay_firtinasini_yatistir(&notify).await;
+
+        assert_eq!(
+            baslangic.elapsed(),
+            Duration::from_secs(AG_OLAY_SESSIZLIK_SN)
+        );
     }
 }
