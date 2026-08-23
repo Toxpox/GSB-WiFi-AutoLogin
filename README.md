@@ -6,7 +6,7 @@
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin.svg?type=shield&issueType=license)](https://app.fossa.com/projects/git%2Bgithub.com%2FToxpox%2FGSB-WiFi-AutoLogin?ref=badge_shield&issueType=license)
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-1.9.1-blue.svg?cacheSeconds=2592000&style=for-the-badge" />
+  <img alt="Version" src="https://img.shields.io/badge/version-1.10.0-blue.svg?cacheSeconds=2592000&style=for-the-badge" />
   <a href="https://github.com/Toxpox/GSB-WiFi-AutoLogin/blob/main/LICENSE" target="_blank">
     <img alt="License: GPLv3" src="https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge" />
   </a>
@@ -41,10 +41,12 @@
 - 👥 **Çoklu Profil:** Birden fazla hesabı yerelde kaydetme, takma ad verme, seçme ve silme.
 - ⚙️ **Ayarlar Paneli:** Otomatik giriş, tepsiye küçülme, başlangıçta çalışma, yeniden bağlanma ve bildirimler için kalıcı anahtarlar.
 - 📜 **Sistem Günlüğü:** Tüm adımlar log panelinde ve `logs/uygulama.log` dosyasında (otomatik rotasyonlu); "Klasörü Aç" ile erişim.
-- 🩺 **Bağlantı Tanılama:** Tek tıkla aşamalı self-test (GSB ağı, DNS, TCP :443, internet/captive durumu, portal erişimi, kayıtlı oturum); sessiz giriş hatalarını somut teşhise çevirir.
+- 🩺 **Bağlantı Tanılama:** Tek tıkla aşamalı self-test (GSB ağı, DNS, TCP :443, internet/captive durumu, portal erişimi, kayıtlı oturum); sessiz giriş hatalarını somut teşhise çevirir. Kontroller paralel çalışır ve DNS tanı başına bir kez çözülür.
+- ⏱️ **Aşama Süresi Ölçümü:** DNS, TCP bağlantısı, giriş denemesi, gövde okuma ve parse süreleri yerel log dosyasına yazılır (`anahtar=deger`). Veri yalnızca cihazda kalır, telemetri gönderilmez.
+- 🧭 **Dayanıklı Ayrıştırma:** Portal sayfaları semantik olarak sınıflandırılır ve JSF ID'leri değişse bile kota/cihaz/buton alanları yedek seçici zinciriyle okunur.
 - 🔒 **Şifreleme:** Kullanıcı bilgilerini cihaza bağlı olarak şifreli saklama: Windows DPAPI (oturum açan kullanıcı hesabına bağlı) önceliklidir, kullanılamazsa AES-GCM'e düşülür. Eski AES kayıtları okunur ve ilk girişte DPAPI'ye taşınır.
 - 🚪 **Oturum Yönetimi:** Aktif oturumu sonlandırma ve maksimum cihaz durumunda önceki oturumu düşürme.
-- 🔄 **Yeniden Deneme:** Ağ hatalarında exponential backoff ile kontrollü tekrar deneme.
+- 🔄 **Güvenli Yeniden Deneme:** Ağ hatalarında exponential backoff ile kontrollü tekrar; deneme sonucu belirsizse (timeout) giriş kör tekrar edilmez, önce oturum doğrulanır. Tüm giriş akışı 25 saniyelik global bütçeye bağlıdır.
 - 🎨 **Modern Arayüz:** Koyu tema, kompakt giriş ekranı ve akıcı ekran geçişleri.
 
 ---
@@ -80,7 +82,9 @@ Kimlik bilgileriniz sadece kendi bilgisayarınızda saklanır. Kayıtlı profill
 
 Giriş istekleri backend tarafında doğrulanır ve yalnızca `wifi.gsb.gov.tr` adresine gönderilebilir; kimlik bilgilerinin başka bir adrese iletilmesi mümkün değildir.
 
-SSL doğrulaması, GSB captive portal akışının yönlendirme gereksinimleri nedeniyle portal istemcisinde devre dışıdır. GitHub sürüm kontrolü ise ayrı ve normal TLS doğrulamalı HTTP istemcisiyle yapılır.
+TLS sertifika doğrulaması **v1.10.0 ile portal istemcisinde de açıldı**; `wifi.gsb.gov.tr` normal sertifika doğrulamasından geçer, doğrulanmamış bir TLS oturumu üzerinden kimlik bilgisi gönderilmez. GitHub sürüm kontrolü ayrı bir istemciyle ve yine TLS doğrulamalı yapılır.
+
+Yanıt gövdeleri boyut sınırıyla okunur (portal 256 KiB, bağlantı kontrolü 1 KiB), böylece bozuk veya kötü niyetli bir yanıt belleği dolduramaz. İnternet erişim kontrolü tam eşleşmeyle doğrulanır; captive portalın beklenen metni sayfasına gömerek "internet var" sonucu ürettirmesi mümkün değildir.
 
 Otomatik güncellemeler kriptografik olarak imzalıdır (minisign): uygulama yalnızca gömülü genel anahtarla doğrulanan güncellemeleri kurar; imzasız veya değiştirilmiş bir paket kurulmaz.
 
@@ -94,7 +98,7 @@ Projeyi kendi bilgisayarınızda derlemek veya geliştirmek için:
 
 - [Rust](https://rustup.rs/) stable sürüm
 - [Node.js](https://nodejs.org/) opsiyonel, frontend sözdizimi kontrolleri için
-- Windows 10 veya Windows 11
+- Windows 10 veya Windows 11 (dağıtım hedefi). Linux üzerinde `cargo test` ve `cargo clippy` çalışır ve CI'da denetlenir; Windows'a özgü kollar (DPAPI, ağ olayı bildirimi, NSIS paketleme) yalnızca Windows'ta derlenir.
 - Tauri CLI (`cargo install tauri-cli --version "^2"` veya mevcut eşdeğer kurulum)
 
 ### Derleme Adımları
@@ -121,8 +125,10 @@ cargo tauri build
 cd src-tauri
 cargo fmt --check
 cargo test
-cargo clippy -- -D warnings
+cargo clippy --all-targets -- -D warnings
 ```
+
+> ℹ️ `cargo test` gerçek kullanıcı veri dizinine yazmaz; test derlemesinde veri dizini geçici dizine yönlendirilir. Üretimde veri dizini `GSB_VERI_DIZINI` ortam değişkeniyle değiştirilebilir.
 
 Frontend sözdizimi için:
 
@@ -142,8 +148,9 @@ node --check frontend/js/hosgeldin.js
 | ![Rust](https://img.shields.io/badge/Rust-000000?style=flat&logo=rust&logoColor=white) | Backend mantığı, ağ akışı, profil yönetimi ve şifreleme |
 | ![Tauri v2](https://img.shields.io/badge/Tauri-FFC131?style=flat&logo=tauri&logoColor=white) | Windows masaüstü uygulama çerçevesi |
 | ![HTML/CSS/JS](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white) | Etkileşimli frontend arayüzü |
-| **AES-GCM** | Yerel kullanıcı bilgisi şifreleme |
-| **reqwest** | Captive portal, çıkış işlemi ve GitHub Releases API istekleri |
+| **AES-GCM** | Yerel kullanıcı bilgisi şifreleme (DPAPI kullanılamadığında) |
+| **reqwest + rustls** | Captive portal, çıkış işlemi ve GitHub Releases API istekleri; TLS doğrulamalı, HTTP/1.1 sabitli, gzip ve bağlantı havuzu açık |
+| **scraper** | Portal sayfalarının semantik sınıflandırılması ve alan ayıklama |
 | **GitHub Releases API** | Yeni sürüm kontrolü ve otomatik güncelleme dağıtımı |
 | **tauri-plugin-updater** | İmzalı uygulama içi otomatik güncelleme |
 | **windows (windows-rs)** | DPAPI ile kimlik şifreleme ve olay tabanlı yeniden bağlanma (IP arayüz değişikliği bildirimi) |
