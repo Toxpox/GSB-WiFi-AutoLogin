@@ -48,8 +48,19 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "targets": ["nsis"],
+    "targets": "all",
     "publisher": "Toxpox",
+    "category": "Utility",
+    "shortDescription": "GSB WiFi otomatik giris",
+    "longDescription": "KYK yurtlarinda kullanilan GSB WiFi agina otomatik giris yapan masaustu uygulamasi.",
+    "linux": {
+      "deb": {
+        "depends": ["libwebkit2gtk-4.1-0", "libgtk-3-0"]
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    },
     "windows": {
       "nsis": {
         "languages": ["Turkish"],

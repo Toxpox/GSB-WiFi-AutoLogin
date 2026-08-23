@@ -12,103 +12,93 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  check:
-    runs-on: windows-latest
+  # Platformdan bagimsiz, hizli kapilar. Derleme matrisinden once koser ve
+  # bariz hatalarda uc runner'i birden mesgul etmez.
+  hizli-kontrol:
+    name: Bicim, surum ve frontend
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.surum.outputs.version }}
     steps:
       - uses: actions/checkout@v6
 
       - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri
+          components: rustfmt
 
       - uses: actions/setup-node@v6
         with:
           node-version: 24
           package-manager-cache: false
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Cargo fmt
         working-directory: src-tauri
         run: cargo fmt --check
 
-      - name: Cargo check
-        working-directory: src-tauri
-        run: cargo check --locked
+      - name: Surum tutarliligi
+        id: surum
+        run: python3 scripts/surum-kontrol.py --yaz-github-output
 
-      - name: Cargo test
-        working-directory: src-tauri
-        run: cargo test --locked
+      # Release yardimcilari bozulursa ya release yayinlanmaz ya da bozuk bir
+      # latest.json tum istemcilerin guncellemesini kirar; her kosumda test edilir.
+      - name: Release araclari testleri
+        run: python3 scripts/test_release_araclari.py
 
-      - name: Cargo clippy
-        working-directory: src-tauri
-        run: cargo clippy --locked --all-targets -- -D warnings
+      - name: CHANGELOG surum girdisi
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: python3 scripts/changelog-bolum.py "${{ github.ref_name }}" --kontrol
 
-      - name: Frontend syntax check
-        shell: pwsh
+      - name: Frontend sozdizimi
         run: |
-          $ErrorActionPreference = "Stop"
-          $dosyalar = Get-ChildItem -Path frontend/js -Filter *.js -File
-          if ($dosyalar.Count -eq 0) { throw "frontend/js altinda JS dosyasi bulunamadi" }
-          foreach ($dosya in $dosyalar) {
-            node --check $dosya.FullName
-            if ($LASTEXITCODE -ne 0) { throw "Sozdizimi hatasi: $($dosya.Name)" }
-          }
+          set -euo pipefail
+          shopt -s nullglob
+          dosyalar=(frontend/js/*.js)
+          if [ ${#dosyalar[@]} -eq 0 ]; then
+            echo "frontend/js altinda JS dosyasi bulunamadi" >&2
+            exit 1
+          fi
+          for dosya in "${dosyalar[@]}"; do
+            node --check "$dosya"
+          done
 
-      - name: Version consistency
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-
-          $cargoToml = Get-Content -Raw -Encoding UTF8 src-tauri/Cargo.toml
-          if ($cargoToml -notmatch '(?m)^version\s*=\s*"([^"]+)"') {
-            throw "src-tauri/Cargo.toml version bulunamadi."
-          }
-          $version = $Matches[1]
-
-          # tauri.conf.json ve config.rs versiyonu Cargo.toml'dan alir
-          # (env!("CARGO_PKG_VERSION") / Tauri v2 fallback), ayrica kontrol gerekmez.
-
-          $frontendApp = Get-Content -Raw -Encoding UTF8 frontend/js/app.js
-          $frontendVersionLine = 'let VERSION = "' + $version + '";'
-          if ($frontendApp -notmatch [regex]::Escape($frontendVersionLine)) {
-            throw "frontend/js/app.js VERSION fallback degeri $version ile uyusmuyor."
-          }
-
-          $cargoLock = Get-Content -Raw -Encoding UTF8 src-tauri/Cargo.lock
-          $lockPattern = '(?ms)\[\[package\]\]\s+name = "gsb-wifi-autologin"\s+version = "' + [regex]::Escape($version) + '"'
-          if ($cargoLock -notmatch $lockPattern) {
-            throw "Cargo.lock proje paketi versiyonu $version ile uyusmuyor."
-          }
-
-          $readme = Get-Content -Raw -Encoding UTF8 README.md
-          if ($readme -notmatch [regex]::Escape("version-$version-blue")) {
-            throw "README.md version rozeti $version ile uyusmuyor."
-          }
-
-          if ($env:GITHUB_REF -like "refs/tags/v*") {
-            $tag = $env:GITHUB_REF -replace '^refs/tags/', ''
-            if ($tag -ne "v$version") {
-              throw "Git tag ($tag) proje versiyonu (v$version) ile uyusmuyor."
-            }
-          }
-
-  linux-check:
-    runs-on: ubuntu-latest
+  # Uc platformda da test ve lint. fail-fast kapali: bir platformun hatasi
+  # digerlerinin sonucunu gizlemesin, tek kosumda tam tablo gorulsun.
+  test:
+    name: Test (${{ matrix.os }})
+    needs: hizli-kontrol
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-22.04, macos-latest]
     steps:
       - uses: actions/checkout@v6
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-          key: linux
+          key: ${{ matrix.os }}
 
-      - name: Install Tauri system dependencies
+      - name: Linux sistem bagimliliklari
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libsoup-3.0-dev \
+            patchelf \
+            file
 
       - name: Cargo test
         working-directory: src-tauri
@@ -118,107 +108,203 @@ jobs:
         working-directory: src-tauri
         run: cargo clippy --locked --all-targets -- -D warnings
 
-  build:
-    needs: check
-    runs-on: windows-latest
+  # Etiketli kosumda her platform icin paket uretir ve artefakt olarak yukler.
+  # Release islemi ayri bir isle yapilir; boylece bir platform basarisiz
+  # olursa yarim bir release yayinlanmaz.
+  paketle:
+    name: Paketle (${{ matrix.ad }})
+    needs: [hizli-kontrol, test]
     if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            ad: windows-x86_64
+            hedefler: nsis
+          # En eski desteklenen glibc: burada uretilen paket daha yeni
+          # dagitimlarda da calisir, tersi gecerli degil.
+          - os: ubuntu-22.04
+            ad: linux-x86_64
+            hedefler: deb,rpm,appimage
+          - os: macos-latest
+            ad: macos-aarch64
+            hedefler: dmg,app
+          # Intel yapisi ayni Apple Silicon runner'inda capraz derlenir:
+          # macos-13 (Intel runner) GitHub tarafindan emekliye ayriliyor.
+          - os: macos-latest
+            ad: macos-x86_64
+            hedefler: dmg,app
+            rust_hedef: x86_64-apple-darwin
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_hedef }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: paket-${{ matrix.ad }}
+
+      - name: Linux sistem bagimliliklari
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libsoup-3.0-dev \
+            patchelf \
+            file \
+            fuse \
+            desktop-file-utils
+
+      - name: Tauri CLI
+        uses: taiki-e/install-action@v2
+        with:
+          tool: tauri-cli
+
+      - name: Derle ve paketle
+        working-directory: src-tauri
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          cargo tauri build --bundles ${{ matrix.hedefler }} \
+            ${{ matrix.rust_hedef && format('--target {0}', matrix.rust_hedef) || '' }}
+
+      - name: Artefaktlari topla
+        shell: bash
+        env:
+          VERSION: ${{ needs.hizli-kontrol.outputs.version }}
+          AD: ${{ matrix.ad }}
+          RUST_HEDEF: ${{ matrix.rust_hedef }}
+        run: |
+          set -euo pipefail
+          mkdir -p cikti
+          # --target verildiginde cargo ciktiyi target/<ucgen>/release altina koyar.
+          if [ -n "${RUST_HEDEF:-}" ]; then
+            derleme="src-tauri/target/$RUST_HEDEF/release"
+          else
+            derleme="src-tauri/target/release"
+          fi
+          bundle="$derleme/bundle"
+
+          kopyala() {
+            # $1: glob, $2: hedef dosya adi. Eslesme yoksa hata verir:
+            # sessiz atlama, imzasiz veya eksik bir release'e yol acardi.
+            local bulunan
+            bulunan=$(ls $1 2>/dev/null | head -n1 || true)
+            if [ -z "$bulunan" ]; then
+              echo "HATA: beklenen artefakt bulunamadi: $1" >&2
+              exit 1
+            fi
+            cp "$bulunan" "cikti/$2"
+            echo "toplandi: $2  <- $bulunan"
+          }
+
+          case "$AD" in
+            windows-x86_64)
+              kopyala "$bundle/nsis/*-setup.exe" "GSB_WiFi_AutoLogin_${VERSION}_setup.exe"
+              kopyala "$bundle/nsis/*-setup.exe.sig" "GSB_WiFi_AutoLogin_${VERSION}_setup.exe.sig"
+              cp "$derleme/gsb-wifi-autologin.exe" \
+                 "cikti/GSB_WiFi_AutoLogin_${VERSION}_portable.exe"
+              ;;
+            linux-x86_64)
+              kopyala "$bundle/deb/*.deb" "GSB_WiFi_AutoLogin_${VERSION}_amd64.deb"
+              kopyala "$bundle/rpm/*.rpm" "GSB_WiFi_AutoLogin_${VERSION}_x86_64.rpm"
+              kopyala "$bundle/appimage/*.AppImage" "GSB_WiFi_AutoLogin_${VERSION}_amd64.AppImage"
+              kopyala "$bundle/appimage/*.AppImage.sig" "GSB_WiFi_AutoLogin_${VERSION}_amd64.AppImage.sig"
+              ;;
+            macos-aarch64|macos-x86_64)
+              ark="${AD#macos-}"
+              kopyala "$bundle/dmg/*.dmg" "GSB_WiFi_AutoLogin_${VERSION}_${ark}.dmg"
+              # Updater .app.tar.gz uzerinden calisir, .dmg uzerinden degil.
+              kopyala "$bundle/macos/*.app.tar.gz" "GSB_WiFi_AutoLogin_${VERSION}_${ark}.app.tar.gz"
+              kopyala "$bundle/macos/*.app.tar.gz.sig" "GSB_WiFi_AutoLogin_${VERSION}_${ark}.app.tar.gz.sig"
+              ;;
+          esac
+
+          if [ -z "$(ls -A cikti)" ]; then
+            echo "HATA: $AD icin hicbir artefakt uretilmedi." >&2
+            exit 1
+          fi
+          ls -la cikti
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: paket-${{ matrix.ad }}
+          path: cikti/*
+          if-no-files-found: error
+          retention-days: 7
+
+  # Tum platformlar basariyla paketlendikten sonra tek bir release yayinlar.
+  # Surum notu CHANGELOG.md'den uretilir, elle yazilmaz.
+  release:
+    name: Release yayinla
+    needs: [hizli-kontrol, paketle]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v6
 
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
         with:
-          workspaces: src-tauri
+          python-version: "3.12"
 
-      - name: Cache Tauri CLI
-        id: cache-tauri-cli
-        uses: actions/cache@v4
+      - uses: actions/download-artifact@v4
         with:
-          path: ~/.cargo/bin/cargo-tauri.exe
-          key: tauri-cli-${{ runner.os }}-v2
+          pattern: paket-*
+          path: indirilen
+          merge-multiple: true
 
-      - name: Install Tauri CLI
-        if: steps.cache-tauri-cli.outputs.cache-hit != 'true'
-        run: cargo install tauri-cli --version "^2" --locked
-
-      - name: Build
-        working-directory: src-tauri
+      - name: Surum notunu CHANGELOG'dan uret
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: cargo tauri build
-
-      - name: Prepare release files
-        shell: pwsh
+          VERSION: ${{ needs.hizli-kontrol.outputs.version }}
         run: |
-          $ErrorActionPreference = "Stop"
+          set -euo pipefail
+          {
+            python3 scripts/changelog-bolum.py "$VERSION"
+            echo
+            echo "---"
+            echo
+            echo "### Hangi dosyayi indirmeliyim?"
+            echo
+            echo "| Platform | Dosya |"
+            echo "|:---|:---|"
+            echo "| Windows (kurulum, otomatik guncellemeli) | \`*_setup.exe\` |"
+            echo "| Windows (portable) | \`*_portable.exe\` |"
+            echo "| Debian, Ubuntu turevleri | \`*_amd64.deb\` |"
+            echo "| Fedora, RHEL, openSUSE | \`*_x86_64.rpm\` |"
+            echo "| Diger Linux dagitimlari (otomatik guncellemeli) | \`*_amd64.AppImage\` |"
+            echo "| macOS Apple Silicon | \`*_aarch64.dmg\` |"
+            echo "| macOS Intel | \`*_x86_64.dmg\` |"
+            echo
+            echo "Dosya butunlugunu \`SHA256SUMS.txt\` ile dogrulayabilirsiniz."
+            echo
+            echo "> macOS paketleri henuz noter onayli degildir; ilk acilista"
+            echo "> Gatekeeper uyarisi gorebilirsiniz."
+          } > surum-notu.md
+          cat surum-notu.md
 
-          $portableSource = "src-tauri/target/release/gsb-wifi-autologin.exe"
-          $installerSource = Get-ChildItem "src-tauri/target/release/bundle/nsis" -Filter "*.exe" | Select-Object -First 1
+      - name: latest.json ve SHA256SUMS uret
+        env:
+          VERSION: ${{ needs.hizli-kontrol.outputs.version }}
+        run: python3 scripts/release-manifest.py --version "$VERSION" --dizin indirilen
 
-          if (!(Test-Path $portableSource)) {
-            throw "Portable exe bulunamadi: $portableSource"
-          }
-          if ($null -eq $installerSource) {
-            throw "NSIS installer bulunamadi."
-          }
-
-          Copy-Item $portableSource "GSB_WiFi_AutoLogin_portable.exe"
-          Copy-Item $installerSource.FullName "GSB_WiFi_AutoLogin_setup.exe"
-
-          # Updater imzasi: .sig yoksa FAIL — latest.json'siz tek bir release
-          # bile releases/latest/download endpoint'i uzerinden TUM
-          # istemcilerin guncelleme kontrolunu kirar.
-          $sigSource = "$($installerSource.FullName).sig"
-          if (!(Test-Path $sigSource)) {
-            throw "Updater imzasi bulunamadi: $sigSource (TAURI_SIGNING_PRIVATE_KEY secret'i tanimli mi?)"
-          }
-          $signature = (Get-Content -Raw -Encoding UTF8 $sigSource).Trim()
-          if ([string]::IsNullOrWhiteSpace($signature)) {
-            throw "Updater imzasi bos: $sigSource"
-          }
-
-          $cargoToml = Get-Content -Raw -Encoding UTF8 src-tauri/Cargo.toml
-          if ($cargoToml -notmatch '(?m)^version\s*=\s*"([^"]+)"') {
-            throw "src-tauri/Cargo.toml version bulunamadi."
-          }
-          $version = $Matches[1]
-
-          $latestJson = @{
-            version = "v$version"
-            pub_date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-            platforms = @{
-              "windows-x86_64" = @{
-                signature = $signature
-                url = "https://github.com/Toxpox/GSB-WiFi-AutoLogin/releases/download/v$version/GSB_WiFi_AutoLogin_setup.exe"
-              }
-            }
-          } | ConvertTo-Json -Depth 4
-
-          # PowerShell 5.1: Set-Content/Out-File UTF-16 BOM yazar; updater
-          # BOM'suz UTF-8 bekler.
-          [IO.File]::WriteAllText("$PWD/latest.json", $latestJson, [Text.UTF8Encoding]::new($false))
-
-          $files = @(
-            "GSB_WiFi_AutoLogin_portable.exe",
-            "GSB_WiFi_AutoLogin_setup.exe",
-            "latest.json"
-          )
-
-          $hashLines = foreach ($file in $files) {
-            $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $file).Hash
-            "$hash  $file"
-          }
-          Set-Content -Path "SHA256SUMS.txt" -Value $hashLines -Encoding ASCII
+      - name: Yuklenecek dosyalar
+        run: ls -la indirilen
 
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            GSB_WiFi_AutoLogin_portable.exe
-            GSB_WiFi_AutoLogin_setup.exe
-            latest.json
-            SHA256SUMS.txt
+          body_path: surum-notu.md
+          files: indirilen/*
+          fail_on_unmatched_files: true

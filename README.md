@@ -98,7 +98,8 @@ Projeyi kendi bilgisayarınızda derlemek veya geliştirmek için:
 
 - [Rust](https://rustup.rs/) stable sürüm
 - [Node.js](https://nodejs.org/) opsiyonel, frontend sözdizimi kontrolleri için
-- Windows 10 veya Windows 11 (dağıtım hedefi). Linux üzerinde `cargo test` ve `cargo clippy` çalışır ve CI'da denetlenir; Windows'a özgü kollar (DPAPI, ağ olayı bildirimi, NSIS paketleme) yalnızca Windows'ta derlenir.
+- Windows, Linux veya macOS. Üç platform da CI'da derlenir, test edilir ve paketlenir. Platforma özgü kollar (Windows'ta DPAPI ve ağ olayı bildirimi gibi) yalnızca ilgili platformda derlenir.
+- Linux'ta paketleme için sistem bağımlılıkları: `libwebkit2gtk-4.1-dev`, `libgtk-3-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev`, `patchelf` (RPM için ek olarak `rpm`).
 - Tauri CLI (`cargo install tauri-cli --version "^2"` veya mevcut eşdeğer kurulum)
 
 ### Derleme Adımları
@@ -116,8 +117,19 @@ cargo tauri build
 
 📂 **Çıktı Yolları:**
 
-- **Installer:** `src-tauri/target/release/bundle/nsis/`
+- **Windows installer:** `src-tauri/target/release/bundle/nsis/`
 - **Portable exe:** `src-tauri/target/release/`
+- **Linux paketleri:** `src-tauri/target/release/bundle/{deb,rpm,appimage}/`
+- **macOS paketleri:** `src-tauri/target/release/bundle/{dmg,macos}/`
+
+> ℹ️ Yalnızca belirli paketleri üretmek için: `cargo tauri build --bundles deb,appimage`
+>
+> ⚠️ **Güncel Linux dağıtımlarında AppImage:** glibc 2.36+ ile derlenen sistem
+> kütüphaneleri `.relr.dyn` bölümü içerir ve `linuxdeploy` içindeki eski `strip`
+> bunu ayrıştıramaz, paketleme `failed to run linuxdeploy` ile düşer. Yerelde
+> `NO_STRIP=true cargo tauri build --bundles appimage` ile aşılır (çıktı
+> sembolleri koruduğu için belirgin şekilde büyür). CI `ubuntu-22.04` üzerinde
+> derlediğinden bu sorun oluşmaz; bu yüzden CI'da `NO_STRIP` **kullanılmaz**.
 
 ### Kontrol Komutları
 

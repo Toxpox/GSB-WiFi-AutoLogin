@@ -50,10 +50,14 @@ daha hızlı, daha öngörülebilir ve daha güvenli hâle geldi. Test sayısı 
 - Yeni testlerin gerçekten koruduğu, kasıtlı hata enjeksiyonuyla (mutasyon testi) doğrulandı.
 - Kaynak dosyalardaki yorum satırları temizlendi; her commit ayrı worktree'de derlenip test edilerek geçmişin bisect edilebilirliği doğrulandı.
 - Release binary artışı +12.680 bayt (%0,154) ile sınırlı kaldı.
+- **Çok platformlu yayın hattı:** CI yalnızca Windows'ta derleyip paketliyordu. Artık `hizli-kontrol` → `test` (Windows/Linux/macOS matrisi) → `paketle` → `release` akışı çalışıyor; sürüm etiketi atıldığında Windows (NSIS + portable), Linux (deb, rpm, AppImage) ve macOS (Intel + Apple Silicon için dmg/app) paketleri tek bir release'de yayımlanıyor.
+- **Updater manifesti tüm platformları kapsıyor:** Önceki hat `latest.json` içine yalnızca `windows-x86_64` yazıyordu; Linux ve macOS istemcileri kendi platformlarını bulamadığı için güncelleme kontrolü hata veriyordu. Yeni `scripts/release-manifest.py` üretilen her updater paketini manifeste ekliyor, imzasız pakette veya Windows girdisi eksikken yayını durduruyor ve `SHA256SUMS.txt` üretiyor.
+- **Sürüm doğrulaması platform bağımsız:** Windows'a özgü PowerShell denetimi, Cargo.toml'u kaynak kabul edip Cargo.lock, `app.js`, README rozeti, CHANGELOG başlığı ve git etiketi arasındaki tutarlılığı denetleyen `scripts/surum-kontrol.py` ile değiştirildi. Sürüm notu artık elle yazılmıyor, CHANGELOG'dan `scripts/changelog-bolum.py` ile üretiliyor.
+- Release yardımcı betikleri 13 testle korunuyor (`scripts/test_release_araclari.py`) ve her CI koşumunda çalışıyor.
 
 **Kapsam notu:** Bu turdaki doğrulamalar Linux x86_64 üzerinde yapıldı; Windows'a
-özgü kollar (DPAPI, `NotifyIpInterfaceChange`, NSIS paketleme) CI'ın
-`windows-latest` işinde derlenir. Zaman bütçesi sabitleri saha ölçümüyle
+özgü kollar (DPAPI, `NotifyIpInterfaceChange`, NSIS paketleme) ve macOS paketleme
+CI'ın ilgili matris işlerinde derlenir. Zaman bütçesi sabitleri saha ölçümüyle
 ayarlanacak başlangıç değerleridir.
 
 ## [1.9.1] - 2026-06-15
